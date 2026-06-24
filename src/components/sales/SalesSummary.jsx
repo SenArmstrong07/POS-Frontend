@@ -1,9 +1,22 @@
 import { COLORS } from "../../constants/colors";
 import { fmt } from "../../utils/format";
 
+// Helper to parse amount from different field names
+const getAmount = (sale, field = 'total') => {
+  let amount = 0;
+  if (field === 'total') {
+    amount = sale.total || sale.amount || sale.total_amount || sale.grand_total || '0';
+  } else if (field === 'subtotal') {
+    amount = sale.subtotal || sale.sub_total || sale.total || '0';
+  }
+  // Parse as float to handle string values from backend (e.g., "224.00")
+  const parsed = parseFloat(amount);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
 export default function SalesSummary({ sales }) {
-  const totalRevenue = sales.reduce(
-    (total, sale) => total + sale.total,
+  const totalRevenue = (sales || []).reduce(
+    (total, sale) => total + getAmount(sale, 'total'),
     0
   );
 

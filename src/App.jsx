@@ -23,8 +23,8 @@ export default function App() {
     }
   }, [user]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const [productsRes, salesRes] = await Promise.all([
@@ -36,8 +36,11 @@ export default function App() {
       const productsData = Array.isArray(productsRes.data) ? productsRes.data : (productsRes.data.results || []);
       const salesData = Array.isArray(salesRes.data) ? salesRes.data : (salesRes.data.results || []);
       
+      // Filter to show only completed sales (exclude draft carts)
+      const completedSalesOnly = (salesData || []).filter(sale => sale.status === 'COMPLETED');
+      
       setProducts(productsData);
-      setSales(salesData);
+      setSales(completedSalesOnly);
     } catch (err) {
       setError(err.message);
       console.error("Failed to fetch data:", err);
@@ -45,25 +48,59 @@ export default function App() {
       setProducts(DEMO_PRODUCTS);
       setSales(DEMO_SALES);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   const handleSale = async (sale, cart) => {
     try {
-      // Send sale to backend
-      await apiCalls.createSale(sale);
+      console.log("Creating sale with cart:", cart);
+      console.log("Sale data:", sale);
+      
+      // Format cart items for backend: [{"product": id, "quantity": qty}, ...]
+      const cartItems = (cart || []).map(item => ({
+        product: item.id,
+        quantity: item.qty || 1
+      }));
 
-      // Update local state
-      setSales((s) => [sale, ...s]);
-      setProducts((prev) =>
-        prev.map((p) => {
-          const ci = cart.find((i) => i.id === p.id);
-          return ci ? { ...p, stock: Math.max(0, p.stock - ci.qty) } : p;
-        })
-      );
+      // Step 1: Create a new sale (cart) with items
+      const saleRes = await apiCalls.createSale({
+        cart: cartItems,
+        discount: sale.discount || null
+      });
+      console.log("Sale created:", saleRes.data);
+      const saleId = saleRes.data.id;
+
+      // Step 2: Complete the sale with payment info
+      // Convert payment method to uppercase (backend expects: CASH, CARD, GCASH, MAYA)
+      const paymentMethod = (sale.payment || 'Cash').toUpperCase();
+      
+      // Calculate total sale amount (sum of all items)
+      const saleAmount = parseFloat(sale.total) || 0;
+      
+      // Tendered amount is what customer gave (from the form input)
+      // This is passed in sale.tendered
+      const tenderedAmount = parseFloat(sale.tendered) || 0;
+      
+      const payments = [{
+        method: paymentMethod,
+        amount: saleAmount,
+        tendered: tenderedAmount  // Include tendered field for CASH payment validation
+      }];
+      console.log("Completing sale with payments:", payments);
+      
+      await apiCalls.completeSale(saleId, payments);
+      console.log("Sale completed successfully");
+
+      // Step 3: Refresh sales data from backend to ensure persistence
+      // Don't show loading state during checkout to keep receipt visible
+      console.log("Refreshing data after successful sale...");
+      await fetchData(false);
     } catch (err) {
       console.error("Failed to save sale:", err);
+      if (err.response?.data) {
+        console.error("Backend error response:", JSON.stringify(err.response.data, null, 2));
+      }
       setError("Failed to save sale");
     }
   };

@@ -52,6 +52,7 @@ export default function POS({ products, onSale }) {
       payment,
       subtotal,
       total: subtotal,
+      tendered: parseFloat(tendered),  // Include tendered amount for backend payment validation
       items: cart.length,
     };
     onSale(sale, cart);
