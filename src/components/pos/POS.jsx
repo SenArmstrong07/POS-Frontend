@@ -12,20 +12,27 @@ export default function POS({ products, onSale }) {
   const [payment, setPayment] = useState("Cash");
   const [receipt, setReceipt] = useState(null);
 
-  const filtered = products.filter(
+  // Helper to parse price from different field names
+  const getPrice = (product) => {
+    const price = product.price || product.unit_price || product.selling_price || product.price_per_unit || 0;
+    return parseFloat(price) || 0;
+  };
+
+  const filtered = (products || []).filter(
     (p) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku.toLowerCase().includes(search.toLowerCase())
+      (p.sku || "").toLowerCase().includes(search.toLowerCase())
   );
 
-  const subtotal = cart.reduce((a, i) => a + i.price * i.qty, 0);
+  const subtotal = cart.reduce((a, i) => a + (i.price || 0) * (i.qty || 0), 0);
   const change = parseFloat(tendered || 0) - subtotal;
 
   const addToCart = (p) => {
+    const price = getPrice(p);
     setCart((c) => {
       const ex = c.find((i) => i.id === p.id);
       if (ex) return c.map((i) => (i.id === p.id ? { ...i, qty: i.qty + 1 } : i));
-      return [...c, { ...p, qty: 1 }];
+      return [...c, { ...p, price, qty: 1 }];
     });
   };
 

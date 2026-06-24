@@ -7,9 +7,10 @@ export default function StockAdjustModal({ product, onClose, onConfirm }) {
 
   if (!product) return null;
 
+  const currentStock = product.stock || product.quantity_on_hand || 0;
   const qty = parseInt(adjustQty);
-  const isValid = qty > 0 && (adjustType !== "remove" || qty <= product.stock);
-  const overLimit = adjustType === "remove" && qty > product.stock;
+  const isValid = qty > 0 && (adjustType !== "remove" || qty <= currentStock);
+  const overLimit = adjustType === "remove" && qty > currentStock;
 
   const handleConfirm = () => {
     if (!isValid) return;

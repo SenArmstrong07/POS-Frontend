@@ -1,6 +1,26 @@
 import { COLORS } from "../../constants/colors";
 import { fmt } from "../../utils/format";
 
+// Helper to parse price from different field names
+const getPrice = (product, field = 'price') => {
+  if (field === 'price') {
+    const price = product.price || product.unit_price || product.selling_price || product.price_per_unit || 0;
+    return parseFloat(price) || 0;
+  } else if (field === 'cost') {
+    const cost = product.cost || product.cost_price || product.unit_cost || 0;
+    return parseFloat(cost) || 0;
+  }
+  return 0;
+};
+
+const getStock = (product) => {
+  return product.stock || product.quantity_on_hand || 0;
+};
+
+const getReorderLevel = (product) => {
+  return product.reorder || product.reorder_level || 5;
+};
+
 export default function ProductTable({ products, onAdjust }) {
   return (
     <div
@@ -32,7 +52,7 @@ export default function ProductTable({ products, onAdjust }) {
                 style={{ borderTop: "1px solid " + COLORS.faint, background: i % 2 === 0 ? "#fff" : COLORS.faint }}
               >
                 <td style={{ padding: "12px 16px", fontSize: 14, fontWeight: 500, color: COLORS.text }}>{p.name}</td>
-                <td style={{ padding: "12px 16px", fontSize: 13, color: COLORS.muted, fontFamily: "monospace" }}>{p.sku}</td>
+                <td style={{ padding: "12px 16px", fontSize: 13, color: COLORS.muted, fontFamily: "monospace" }}>{p.sku || 'N/A'}</td>
                 <td style={{ padding: "12px 16px" }}>
                   <span
                     style={{
@@ -44,22 +64,22 @@ export default function ProductTable({ products, onAdjust }) {
                       color: COLORS.muted,
                     }}
                   >
-                    {p.category || "General"}
+                    {p.category || p.cat_id || "General"}
                   </span>
                 </td>
-                <td style={{ padding: "12px 16px", fontSize: 14, fontWeight: 600, color: COLORS.primary }}>{fmt(p.price)}</td>
-                <td style={{ padding: "12px 16px", fontSize: 14, color: COLORS.text }}>{fmt(p.cost)}</td>
+                <td style={{ padding: "12px 16px", fontSize: 14, fontWeight: 600, color: COLORS.primary }}>{fmt(getPrice(p, 'price'))}</td>
+                <td style={{ padding: "12px 16px", fontSize: 14, color: COLORS.text }}>{fmt(getPrice(p, 'cost'))}</td>
                 <td
                   style={{
                     padding: "12px 16px",
                     fontSize: 14,
                     fontWeight: 600,
-                    color: p.stock <= p.reorder ? COLORS.danger : COLORS.text,
+                    color: getStock(p) <= getReorderLevel(p) ? COLORS.danger : COLORS.text,
                   }}
                 >
-                  {p.stock}
+                  {getStock(p)}
                 </td>
-                <td style={{ padding: "12px 16px", fontSize: 14, color: COLORS.muted }}>{p.reorder}</td>
+                <td style={{ padding: "12px 16px", fontSize: 14, color: COLORS.muted }}>{getReorderLevel(p)}</td>
                 <td style={{ padding: "12px 16px" }}>
                   <span
                     style={{
@@ -67,11 +87,11 @@ export default function ProductTable({ products, onAdjust }) {
                       fontWeight: 600,
                       padding: "3px 10px",
                       borderRadius: 6,
-                      background: p.stock === 0 ? "#fef2f2" : p.stock <= p.reorder ? "#faeeda" : "#e9f9f0",
-                      color: p.stock === 0 ? COLORS.danger : p.stock <= p.reorder ? COLORS.warning : COLORS.success,
+                      background: getStock(p) === 0 ? "#fef2f2" : getStock(p) <= getReorderLevel(p) ? "#faeeda" : "#e9f9f0",
+                      color: getStock(p) === 0 ? COLORS.danger : getStock(p) <= getReorderLevel(p) ? COLORS.warning : COLORS.success,
                     }}
                   >
-                    {p.stock === 0 ? "Out of stock" : p.stock <= p.reorder ? "Low stock" : "In stock"}
+                    {getStock(p) === 0 ? "Out of stock" : getStock(p) <= getReorderLevel(p) ? "Low stock" : "In stock"}
                   </span>
                 </td>
                 <td style={{ padding: "12px 16px", textAlign: "center" }}>

@@ -1,15 +1,23 @@
+import { useState } from "react";
 import { COLORS } from "../../constants/colors";
 import InputField from "../ui/InputField";
 
-export default function LoginForm({ form, setForm, error, onSubmit }) {
+export default function LoginForm({ onSubmit, error, loading }) {
+  const [form, setForm] = useState({ username: "", password: "" });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(form.username, form.password);
+  };
+
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={handleSubmit}>
       <InputField
-        label="Email"
-        type="email"
-        value={form.email}
-        onChange={(v) => setForm((f) => ({ ...f, email: v }))}
-        placeholder="you@business.com"
+        label="Username"
+        type="text"
+        value={form.username}
+        onChange={(v) => setForm((f) => ({ ...f, username: v }))}
+        placeholder="admin"
       />
       <InputField
         label="Password"
@@ -34,6 +42,7 @@ export default function LoginForm({ form, setForm, error, onSubmit }) {
       )}
       <button
         type="submit"
+        disabled={loading}
         style={{
           width: "100%",
           padding: "12px",
@@ -43,11 +52,12 @@ export default function LoginForm({ form, setForm, error, onSubmit }) {
           borderRadius: 10,
           fontSize: 15,
           fontWeight: 600,
-          cursor: "pointer",
+          cursor: loading ? "not-allowed" : "pointer",
+          opacity: loading ? 0.7 : 1,
           marginTop: 4,
         }}
       >
-        Sign in
+        {loading ? "Signing in..." : "Sign in"}
       </button>
     </form>
   );

@@ -25,7 +25,7 @@ export default function RecentSales({ sales }) {
               <div>
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: COLORS.text }}>{s.id}</p>
                 <p style={{ margin: 0, fontSize: 12, color: COLORS.muted }}>
-                  {s.date} · {s.payment}
+                  {(s.date || s.created_at || s.created || 'N/A')} · {(s.payment || s.payment_method || 'Pending')}
                 </p>
               </div>
               <span style={{ fontWeight: 600, color: COLORS.primary, fontSize: 14 }}>{fmt(s.total)}</span>

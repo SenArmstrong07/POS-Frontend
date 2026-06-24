@@ -119,8 +119,17 @@ export default function AddProductModal({ show, onClose, form, setForm, onSubmit
                   required={["name", "sku", "price", "cost", "stock", "reorder"].includes(key)}
                   type={type}
                   value={form[key]}
-                  onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                  onChange={(e) => {
+                    let value = e.target.value;
+                    // Ensure numeric fields only accept positive numbers
+                    if (["price", "cost", "stock", "reorder"].includes(key) && value && isNaN(parseFloat(value))) {
+                      return;
+                    }
+                    setForm((f) => ({ ...f, [key]: value }));
+                  }}
                   placeholder={key === "name" ? "e.g. Ezek the dog" : key === "sku" ? "e.g. WM-001" : ""}
+                  min={["price", "cost", "stock", "reorder"].includes(key) ? "0" : undefined}
+                  step={["price", "cost"].includes(key) ? "0.01" : "1"}
                   style={{
                     width: "100%",
                     padding: "10px 12px",

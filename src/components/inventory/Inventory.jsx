@@ -13,8 +13,8 @@ export default function Inventory({ products, setProducts }) {
   const [showLog, setShowLog] = useState(false);
   const [adjustModal, setAdjustModal] = useState(null);
 
-  const filtered = products.filter(
-    (p) => p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase())
+  const filtered = (products || []).filter(
+    (p) => p && (p.name || '').toLowerCase().includes(search.toLowerCase()) || (p.sku || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const addLog = (action, product, qty) => {
@@ -35,10 +35,10 @@ export default function Inventory({ products, setProducts }) {
       id: Date.now(),
       name: form.name,
       sku: form.sku,
-      price: parseFloat(form.price),
-      cost: parseFloat(form.cost),
-      stock: parseInt(form.stock),
-      reorder: parseInt(form.reorder),
+      price: parseFloat(form.price) || 0,
+      cost: parseFloat(form.cost) || 0,
+      stock: parseInt(form.stock) || 0,
+      reorder: parseInt(form.reorder) || 5,
       category: form.category || "General",
     };
     setProducts((prev) => [...prev, p]);
@@ -62,13 +62,13 @@ export default function Inventory({ products, setProducts }) {
           header.forEach((h, i) => (obj[h] = vals[i] ? vals[i].trim() : ""));
           return {
             id: Date.now() + Math.random(),
-            name: obj.name,
-            sku: obj.sku,
-            price: parseFloat(obj.price) || 0,
-            cost: parseFloat(obj.cost) || 0,
-            stock: parseInt(obj.stock) || 0,
-            reorder: parseInt(obj.reorder) || 5,
-            category: obj.category || "General",
+            name: obj.name || obj.product_name || "",
+            sku: obj.sku || obj.code || "",
+            price: parseFloat(obj.price || obj.unit_price || 0) || 0,
+            cost: parseFloat(obj.cost || obj.cost_price || 0) || 0,
+            stock: parseInt(obj.stock || obj.quantity_on_hand || 0) || 0,
+            reorder: parseInt(obj.reorder || obj.reorder_level || 5) || 5,
+            category: obj.category || obj.cat_id || "General",
           };
         })
         .filter((r) => r.name);
@@ -85,10 +85,11 @@ export default function Inventory({ products, setProducts }) {
 
   const confirmAdjust = (product, type, qty) => {
     setProducts((prev) =>
-      prev.map((p) => {
+      (prev || []).map((p) => {
         if (p.id !== product.id) return p;
-        const newStock = type === "add" ? p.stock + qty : Math.max(0, p.stock - qty);
-        return { ...p, stock: newStock };
+        const currentStock = p.stock || p.quantity_on_hand || 0;
+        const newStock = type === "add" ? currentStock + qty : Math.max(0, currentStock - qty);
+        return { ...p, stock: newStock, quantity_on_hand: newStock };
       })
     );
     addLog(type === "add" ? "Stock added" : "Stock removed", product, qty);

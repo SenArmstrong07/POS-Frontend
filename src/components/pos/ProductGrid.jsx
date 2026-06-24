@@ -2,6 +2,21 @@ import { COLORS } from "../../constants/colors";
 import { fmt } from "../../utils/format";
 
 export default function ProductGrid({ search, setSearch, products, cart, onAddToCart }) {
+  // Helper to parse price from different field names
+  const getPrice = (product) => {
+    const price = product.price || product.unit_price || product.selling_price || product.price_per_unit || 0;
+    return parseFloat(price) || 0;
+  };
+
+  // Helper to get stock from different field names
+  const getStock = (product) => {
+    return product.stock || product.quantity_on_hand || 0;
+  };
+
+  const getReorderLevel = (product) => {
+    return product.reorder || product.reorder_level || 5;
+  };
+
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
@@ -38,21 +53,23 @@ export default function ProductGrid({ search, setSearch, products, cart, onAddTo
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 12 }}>
-        {products.map((p) => {
+        {(products || []).map((p) => {
           const inCart = cart.find((i) => i.id === p.id);
+          const stock = getStock(p);
+          const price = getPrice(p);
           return (
             <button
               key={p.id}
               onClick={() => onAddToCart(p)}
-              disabled={p.stock === 0}
+              disabled={stock === 0}
               style={{
                 background: COLORS.card,
                 border: `1px solid ${COLORS.border}`,
                 borderRadius: 12,
                 padding: "1rem",
-                cursor: p.stock === 0 ? "not-allowed" : "pointer",
+                cursor: stock === 0 ? "not-allowed" : "pointer",
                 textAlign: "left",
-                opacity: p.stock === 0 ? 0.5 : 1,
+                opacity: stock === 0 ? 0.5 : 1,
                 transition: "border-color 0.15s",
                 position: "relative",
                 overflow: "hidden",
@@ -72,9 +89,9 @@ export default function ProductGrid({ search, setSearch, products, cart, onAddTo
               <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 6, lineHeight: 1.3 }}>
                 {p.name}
               </div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>{fmt(p.price)}</div>
-              <div style={{ fontSize: 11, color: p.stock <= p.reorder ? COLORS.danger : COLORS.muted, marginTop: 4 }}>
-                Stock: {p.stock}
+              <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.primary }}>{fmt(price)}</div>
+              <div style={{ fontSize: 11, color: stock <= getReorderLevel(p) ? COLORS.danger : COLORS.muted, marginTop: 4 }}>
+                Stock: {stock}
               </div>
               {inCart && (
                 <div

@@ -1,9 +1,36 @@
+import { useState } from "react";
 import { COLORS } from "../../constants/colors";
 import InputField from "../ui/InputField";
 
-export default function SignupForm({ form, setForm, error, onSubmit }) {
+export default function SignupForm({ onSubmit, error, loading }) {
+  const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    // Validation
+    if (!form.name.trim()) {
+      alert("Name is required.");
+      return;
+    }
+    if (!form.email.includes("@")) {
+      alert("Enter a valid email.");
+      return;
+    }
+    if (form.password.length < 4) {
+      alert("Password too short.");
+      return;
+    }
+    if (form.password !== form.confirm) {
+      alert("Passwords do not match.");
+      return;
+    }
+
+    onSubmit(form.name, form.email, form.password);
+  };
+
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={handleSubmit}>
       <InputField
         label="Full name"
         value={form.name}
@@ -47,6 +74,7 @@ export default function SignupForm({ form, setForm, error, onSubmit }) {
       )}
       <button
         type="submit"
+        disabled={loading}
         style={{
           width: "100%",
           padding: "12px",
@@ -56,11 +84,12 @@ export default function SignupForm({ form, setForm, error, onSubmit }) {
           borderRadius: 10,
           fontSize: 15,
           fontWeight: 600,
-          cursor: "pointer",
+          cursor: loading ? "not-allowed" : "pointer",
+          opacity: loading ? 0.7 : 1,
           marginTop: 4,
         }}
       >
-        Create account
+        {loading ? "Creating account..." : "Create account"}
       </button>
     </form>
   );

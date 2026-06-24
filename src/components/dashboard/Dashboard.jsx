@@ -6,10 +6,23 @@ import RecentSales from "./RecentSales";
 import LowStockList from "./LowStockList";
 
 export default function Dashboard({ products, sales }) {
-  const todaySales = sales.filter((s) => s.date.startsWith("2025-06-17"));
-  const todayTotal = todaySales.reduce((a, s) => a + s.total, 0);
-  const lowStock = products.filter((p) => p.stock <= p.reorder);
-  const recent = sales.slice(0, 5);
+  // Get today's date in YYYY-MM-DD format
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Filter today's sales - handle different date field names and formats
+  const todaySales = (sales || []).filter((s) => {
+    if (!s) return false;
+    // Check various possible date fields
+    const dateField = s.date || s.created_at || s.created || s.timestamp;
+    if (!dateField) return false;
+    // Convert to string and check if it starts with today's date
+    const dateStr = String(dateField);
+    return dateStr.startsWith(today) || dateStr.includes(today);
+  });
+  
+  const todayTotal = todaySales.reduce((a, s) => a + (s.total || s.amount || 0), 0);
+  const lowStock = (products || []).filter((p) => p && p.stock !== undefined && p.reorder !== undefined && p.stock <= p.reorder);
+  const recent = (sales || []).slice(0, 5);
 
   const metrics = [
     { label: "Today's revenue", value: fmt(todayTotal), icon: <MoneyIcon />, color: COLORS.primary, bg: COLORS.primaryLight },

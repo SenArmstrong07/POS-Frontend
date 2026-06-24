@@ -51,7 +51,7 @@ export default function CartPanel({ cart, subtotal, onUpdateQty }) {
         </div>
       ) : (
         <div style={{ flex: 1, overflowY: "auto" }}>
-          {cart.map((i) => (
+          {(cart || []).map((i) => (
             <div
               key={i.id}
               style={{

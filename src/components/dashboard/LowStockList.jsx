@@ -38,20 +38,20 @@ export default function LowStockList({ products }) {
           >
             <div>
               <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: COLORS.text }}>{p.name}</p>
-              <p style={{ margin: 0, fontSize: 12, color: COLORS.muted }}>SKU: {p.sku}</p>
+              <p style={{ margin: 0, fontSize: 12, color: COLORS.muted }}>SKU: {p.sku || p.barcode || 'N/A'}</p>
             </div>
             <div style={{ textAlign: "right" }}>
               <span
                 style={{
-                  background: p.stock === 0 ? "#fef2f2" : "#faeeda",
-                  color: p.stock === 0 ? COLORS.danger : COLORS.warning,
+                  background: (p.stock || p.quantity_on_hand || 0) === 0 ? "#fef2f2" : "#faeeda",
+                  color: (p.stock || p.quantity_on_hand || 0) === 0 ? COLORS.danger : COLORS.warning,
                   fontSize: 12,
                   fontWeight: 600,
                   padding: "3px 10px",
                   borderRadius: 6,
                 }}
               >
-                {p.stock} left
+                {(p.stock || p.quantity_on_hand || 0)} left
               </span>
             </div>
           </div>

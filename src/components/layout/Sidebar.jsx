@@ -93,7 +93,7 @@ export default function Sidebar({ navItems, activeTab, onNavigate, user, onLogou
                 fontSize: 13,
               }}
             >
-              {user.name[0].toUpperCase()}
+            {user.name && user.name[0] ? user.name[0].toUpperCase() : "U"}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div
@@ -106,7 +106,7 @@ export default function Sidebar({ navItems, activeTab, onNavigate, user, onLogou
                   whiteSpace: "nowrap",
                 }}
               >
-                {user.name}
+                {user.name || user.username || "User"}
               </div>
               <div
                 style={{
@@ -117,7 +117,7 @@ export default function Sidebar({ navItems, activeTab, onNavigate, user, onLogou
                   whiteSpace: "nowrap",
                 }}
               >
-                {user.email}
+                {user.email || user.username || "No email"}
               </div>
             </div>
           </div>
