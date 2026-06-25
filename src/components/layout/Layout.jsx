@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { COLORS } from "../../constants/colors";
-import { GridIcon, CartIcon, BoxIcon, ReceiptIcon } from "../icons/Icons";
+import { GridIcon, CartIcon, BoxIcon, ReceiptIcon, ReportIcon } from "../icons/Icons";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 
@@ -12,6 +12,7 @@ export default function Layout({ user, onLogout, children, activeTab, setActiveT
     { id: "pos", label: "Point of Sale", icon: <CartIcon /> },
     { id: "inventory", label: "Inventory", icon: <BoxIcon /> },
     { id: "sales", label: "Sales History", icon: <ReceiptIcon /> },
+    { id: "reports", label: "Reports", icon: <ReportIcon />},
   ];
 
   const handleNavigate = (id) => {
