@@ -28,19 +28,24 @@ export const apiCalls = {
   getProduct: (id) => api.get(`/catalog/products/${id}/`),
   updateProductStock: (id, stock) => api.patch(`/catalog/products/${id}/`, { stock }),
   getProductByBarcode: (barcode) => api.get('/catalog/products/by-barcode/', { params: { barcode } }),
-  
+
   // Sales - POS
   getSales: () => api.get('/sales/sales/'),
   getSaleDetail: (id) => api.get(`/sales/sales/${id}/`),
   createSale: (saleData) => api.post('/sales/sales/', saleData),
   completeSale: (id, payments) => api.post(`/sales/sales/${id}/complete/`, { payments }),
   getDailySummary: () => api.get('/sales/sales/daily_summary/'),
-  
+
   // Reports (Dashboard)
   getDashboard: () => api.get('/reports/dashboard/'),
   getSalesSummary: (params) => api.get('/reports/sales-summary/', { params }),
   getTopProducts: (params) => api.get('/reports/top-products/', { params }),
-  
+  getInventoryStatus: (params) => api.get('/reports/inventory-status/', { params }),
+  getStockInHistory: (params) => api.get('/reports/stock-in-history/', { params }),
+  getProfitEstimate: (params) => api.get('/reports/profit-estimate/', { params }),
+  getInventoryTurnover: (params) => api.get('/reports/inventory-turnover/', { params }),
+  getReorderPoint: (params) => api.get('/reports/reorder-point/', { params }),
+
   // Auth
   login: (username, password) => api.post('/auth/login/', { username, password }),
   signup: (userData) => api.post('/auth/register/', userData),

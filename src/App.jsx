@@ -5,6 +5,7 @@ import Dashboard from "./components/dashboard/Dashboard";
 import POS from "./components/pos/POS";
 import Inventory from "./components/inventory/Inventory";
 import SalesHistory from "./components/sales/SalesHistory";
+import Analytics from "./components/analytics/Analytics";
 import { DEMO_PRODUCTS, DEMO_SALES } from "./constants/demoData";
 import { apiCalls } from "./services/api";
 
@@ -122,6 +123,7 @@ export default function App() {
           {tab === "pos" && <POS products={products} onSale={handleSale} />}
           {tab === "inventory" && <Inventory products={products} setProducts={setProducts} />}
           {tab === "sales" && <SalesHistory sales={sales} />}
+          {tab === "reports" && <Analytics />}
         </>
       )}
     </AppLayout>
