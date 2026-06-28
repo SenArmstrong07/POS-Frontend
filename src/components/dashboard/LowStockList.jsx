@@ -1,4 +1,5 @@
 import { COLORS } from "../../constants/colors";
+import { getProductStock } from "../../utils/productFields";
 import { AlertIcon } from "../icons/Icons";
 
 export default function LowStockList({ products }) {
@@ -25,7 +26,9 @@ export default function LowStockList({ products }) {
           All products are well-stocked ✓
         </p>
       ) : (
-        products.map((p) => (
+        products.map((p) => {
+          const stock = getProductStock(p);
+          return (
           <div
             key={p.id}
             style={{
@@ -43,19 +46,20 @@ export default function LowStockList({ products }) {
             <div style={{ textAlign: "right" }}>
               <span
                 style={{
-                  background: (p.stock || p.quantity_on_hand || 0) === 0 ? "#fef2f2" : "#faeeda",
-                  color: (p.stock || p.quantity_on_hand || 0) === 0 ? COLORS.danger : COLORS.warning,
+                  background: stock === 0 ? "#fef2f2" : "#faeeda",
+                  color: stock === 0 ? COLORS.danger : COLORS.warning,
                   fontSize: 12,
                   fontWeight: 600,
                   padding: "3px 10px",
                   borderRadius: 6,
                 }}
               >
-                {(p.stock || p.quantity_on_hand || 0)} left
+                {stock} left
               </span>
             </div>
           </div>
-        ))
+          );
+        })
       )}
     </div>
   );
