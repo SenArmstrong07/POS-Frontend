@@ -1,25 +1,12 @@
 import { COLORS } from "../../constants/colors";
 import { fmt } from "../../utils/format";
-
-// Helper to parse price from different field names
-const getPrice = (product, field = 'price') => {
-  if (field === 'price') {
-    const price = product.price || product.unit_price || product.selling_price || product.price_per_unit || 0;
-    return parseFloat(price) || 0;
-  } else if (field === 'cost') {
-    const cost = product.cost || product.cost_price || product.unit_cost || 0;
-    return parseFloat(cost) || 0;
-  }
-  return 0;
-};
-
-const getStock = (product) => {
-  return product.stock || product.quantity_on_hand || 0;
-};
-
-const getReorderLevel = (product) => {
-  return product.reorder || product.reorder_level || 5;
-};
+import {
+  getProductCategoryLabel,
+  getProductCost,
+  getProductPrice,
+  getProductReorderLevel,
+  getProductStock,
+} from "../../utils/productFields";
 
 export default function ProductTable({ products, onAdjust }) {
   return (
@@ -47,6 +34,11 @@ export default function ProductTable({ products, onAdjust }) {
           </thead>
           <tbody>
             {products.map((p, i) => (
+              (() => {
+                const stock = getProductStock(p);
+                const reorderLevel = getProductReorderLevel(p);
+
+                return (
               <tr
                 key={p.id}
                 style={{ borderTop: "1px solid " + COLORS.faint, background: i % 2 === 0 ? "#fff" : COLORS.faint }}
@@ -64,22 +56,22 @@ export default function ProductTable({ products, onAdjust }) {
                       color: COLORS.muted,
                     }}
                   >
-                    {p.category || p.cat_id || "General"}
+                    {getProductCategoryLabel(p)}
                   </span>
                 </td>
-                <td style={{ padding: "12px 16px", fontSize: 14, fontWeight: 600, color: COLORS.primary }}>{fmt(getPrice(p, 'price'))}</td>
-                <td style={{ padding: "12px 16px", fontSize: 14, color: COLORS.text }}>{fmt(getPrice(p, 'cost'))}</td>
+                <td style={{ padding: "12px 16px", fontSize: 14, fontWeight: 600, color: COLORS.primary }}>{fmt(getProductPrice(p))}</td>
+                <td style={{ padding: "12px 16px", fontSize: 14, color: COLORS.text }}>{fmt(getProductCost(p))}</td>
                 <td
                   style={{
                     padding: "12px 16px",
                     fontSize: 14,
                     fontWeight: 600,
-                    color: getStock(p) <= getReorderLevel(p) ? COLORS.danger : COLORS.text,
+                    color: stock <= reorderLevel ? COLORS.danger : COLORS.text,
                   }}
                 >
-                  {getStock(p)}
+                  {stock}
                 </td>
-                <td style={{ padding: "12px 16px", fontSize: 14, color: COLORS.muted }}>{getReorderLevel(p)}</td>
+                <td style={{ padding: "12px 16px", fontSize: 14, color: COLORS.muted }}>{reorderLevel}</td>
                 <td style={{ padding: "12px 16px" }}>
                   <span
                     style={{
@@ -87,11 +79,11 @@ export default function ProductTable({ products, onAdjust }) {
                       fontWeight: 600,
                       padding: "3px 10px",
                       borderRadius: 6,
-                      background: getStock(p) === 0 ? "#fef2f2" : getStock(p) <= getReorderLevel(p) ? "#faeeda" : "#e9f9f0",
-                      color: getStock(p) === 0 ? COLORS.danger : getStock(p) <= getReorderLevel(p) ? COLORS.warning : COLORS.success,
+                      background: stock === 0 ? "#fef2f2" : stock <= reorderLevel ? "#faeeda" : "#e9f9f0",
+                      color: stock === 0 ? COLORS.danger : stock <= reorderLevel ? COLORS.warning : COLORS.success,
                     }}
                   >
-                    {getStock(p) === 0 ? "Out of stock" : getStock(p) <= getReorderLevel(p) ? "Low stock" : "In stock"}
+                    {stock === 0 ? "Out of stock" : stock <= reorderLevel ? "Low stock" : "In stock"}
                   </span>
                 </td>
                 <td style={{ padding: "12px 16px", textAlign: "center" }}>
@@ -119,21 +111,21 @@ export default function ProductTable({ products, onAdjust }) {
                     <button
                       onClick={() => onAdjust(p, "remove")}
                       title="Remove stock"
-                      disabled={p.stock === 0}
+                      disabled={stock === 0}
                       style={{
                         width: 30,
                         height: 30,
                         border: "1px solid " + COLORS.border,
                         borderRadius: 6,
-                        background: p.stock === 0 ? COLORS.faint : "#fef2f2",
-                        cursor: p.stock === 0 ? "not-allowed" : "pointer",
+                        background: stock === 0 ? COLORS.faint : "#fef2f2",
+                        cursor: stock === 0 ? "not-allowed" : "pointer",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         fontSize: 16,
                         fontWeight: 700,
-                        color: p.stock === 0 ? COLORS.muted : COLORS.danger,
-                        opacity: p.stock === 0 ? 0.5 : 1,
+                        color: stock === 0 ? COLORS.muted : COLORS.danger,
+                        opacity: stock === 0 ? 0.5 : 1,
                       }}
                     >
                       −
@@ -141,6 +133,8 @@ export default function ProductTable({ products, onAdjust }) {
                   </div>
                 </td>
               </tr>
+                );
+              })()
             ))}
             {products.length === 0 && (
               <tr>

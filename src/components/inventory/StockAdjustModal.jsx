@@ -1,13 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { COLORS } from "../../constants/colors";
 
-export default function StockAdjustModal({ product, onClose, onConfirm }) {
-  const [adjustType, setAdjustType] = useState("add");
+export default function StockAdjustModal({ product, initialType = "add", onClose, onConfirm, loading = false }) {
+  const normalizedInitialType = initialType === "remove" ? "remove" : "add";
+  const [adjustType, setAdjustType] = useState(normalizedInitialType);
   const [adjustQty, setAdjustQty] = useState("");
+
+  useEffect(() => {
+    if (product) {
+      setAdjustType(normalizedInitialType);
+      setAdjustQty("");
+    }
+  }, [product, normalizedInitialType]);
 
   if (!product) return null;
 
-  const currentStock = product.stock || product.quantity_on_hand || 0;
+  const currentStock = Number(product.quantity_on_hand ?? product.stock ?? 0);
   const qty = parseInt(adjustQty);
   const isValid = qty > 0 && (adjustType !== "remove" || qty <= currentStock);
   const overLimit = adjustType === "remove" && qty > currentStock;
@@ -16,13 +24,12 @@ export default function StockAdjustModal({ product, onClose, onConfirm }) {
     if (!isValid) return;
     onConfirm(product, adjustType, qty);
     setAdjustQty("");
-    setAdjustType("add");
   };
 
   const handleClose = () => {
+    if (loading) return;
     onClose();
     setAdjustQty("");
-    setAdjustType("add");
   };
 
   return (
@@ -56,7 +63,7 @@ export default function StockAdjustModal({ product, onClose, onConfirm }) {
         </h3>
         <p style={{ margin: "0 0 1.25rem", fontSize: 13, color: COLORS.muted }}>
           {product.name} · Current stock:{" "}
-          <strong style={{ color: COLORS.text }}>{product.stock}</strong>
+          <strong style={{ color: COLORS.text }}>{currentStock}</strong>
         </p>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
@@ -64,6 +71,7 @@ export default function StockAdjustModal({ product, onClose, onConfirm }) {
             <button
               key={t}
               onClick={() => setAdjustType(t)}
+              disabled={loading}
               style={{
                 flex: 1,
                 padding: "8px",
@@ -90,6 +98,7 @@ export default function StockAdjustModal({ product, onClose, onConfirm }) {
           type="number"
           value={adjustQty}
           onChange={(e) => setAdjustQty(e.target.value)}
+          disabled={loading}
           placeholder="0"
           min="1"
           style={{
@@ -104,27 +113,27 @@ export default function StockAdjustModal({ product, onClose, onConfirm }) {
         />
         {overLimit && (
           <p style={{ margin: "6px 0 0", fontSize: 12, color: COLORS.danger, fontWeight: 500 }}>
-            Cannot remove more than available stock ({product.stock})
+            Cannot remove more than available stock ({currentStock})
           </p>
         )}
 
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
           <button
             onClick={handleConfirm}
-            disabled={!isValid}
+            disabled={!isValid || loading}
             style={{
               flex: 1,
               padding: "10px",
-              background: !isValid ? COLORS.border : adjustType === "add" ? COLORS.primary : COLORS.danger,
+              background: !isValid || loading ? COLORS.border : adjustType === "add" ? COLORS.primary : COLORS.danger,
               color: "#fff",
               border: "none",
               borderRadius: 8,
               fontSize: 14,
               fontWeight: 600,
-              cursor: !isValid ? "not-allowed" : "pointer",
+              cursor: !isValid || loading ? "not-allowed" : "pointer",
             }}
           >
-            {adjustType === "add" ? "Add Stock" : "Remove Stock"}
+            {loading ? "Saving..." : adjustType === "add" ? "Add Stock" : "Remove Stock"}
           </button>
           <button
             onClick={handleClose}

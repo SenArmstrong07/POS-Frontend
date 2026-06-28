@@ -35,8 +35,14 @@ export const apiCalls = {
   // Catalog - Products
   getProducts: () => api.get('/catalog/products/'),
   getProduct: (id) => api.get(`/catalog/products/${id}/`),
+  createProduct: (productData) => api.post('/catalog/products/', productData),
   updateProductStock: (id, stock) => api.patch(`/catalog/products/${id}/`, { stock }),
   getProductByBarcode: (barcode) => api.get('/catalog/products/by-barcode/', { params: { barcode } }),
+
+  // Inventory
+  getStockMovements: (params) => api.get('/inventory/movements/', { params }),
+  adjustStock: (payload) => api.post('/inventory/movements/adjust/', payload),
+  getLowStockProducts: () => api.get('/inventory/movements/low_stock/'),
 
   // Sales - POS
   getSales: () => api.get('/sales/sales/'),

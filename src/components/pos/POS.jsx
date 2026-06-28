@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getApiErrorMessage } from "../../utils/apiErrors";
+import { getProductId, getProductPrice } from "../../utils/productFields";
 import { apiCalls, getAuthToken, setAuthToken } from "../../services/api";
 import AdminOverrideModal from "../ui/AdminOverrideModal";
 import ProductGrid from "./ProductGrid";
@@ -23,12 +24,6 @@ export default function POS({ products, onSale, onRefreshData }) {
   const [receiptVoidOpen, setReceiptVoidOpen] = useState(false);
   const [receiptVoidLoading, setReceiptVoidLoading] = useState(false);
   const [receiptVoidError, setReceiptVoidError] = useState("");
-
-  // Helper to parse price from different field names
-  const getPrice = (product) => {
-    const price = product.price || product.unit_price || product.selling_price || product.price_per_unit || 0;
-    return parseFloat(price) || 0;
-  };
 
   const filtered = (products || []).filter(
     (p) =>
@@ -78,11 +73,21 @@ export default function POS({ products, onSale, onRefreshData }) {
 
   const addToCart = async (p) => {
     if (syncing || checkoutLoading) return;
-    const price = getPrice(p);
-    const existing = cart.find((i) => i.id === p.id);
+    const productId = getProductId(p);
+    const price = getProductPrice(p);
+    if (!productId) {
+      setToast({ type: "error", message: "This product is missing a backend id and cannot be sold." });
+      return;
+    }
+    if (price <= 0) {
+      setToast({ type: "error", message: "This product has no sellable price." });
+      return;
+    }
+
+    const existing = cart.find((i) => i.id === productId);
     const nextCart = existing
-      ? cart.map((i) => (i.id === p.id ? { ...i, qty: i.qty + 1 } : i))
-      : [...cart, { ...p, price, qty: 1 }];
+      ? cart.map((i) => (i.id === productId ? { ...i, qty: i.qty + 1 } : i))
+      : [...cart, { ...p, id: productId, price, qty: 1 }];
     try {
       await syncDraftCart(nextCart);
     } catch {

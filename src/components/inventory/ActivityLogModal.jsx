@@ -1,6 +1,6 @@
 import { COLORS } from "../../constants/colors";
 
-export default function ActivityLogModal({ show, onClose, logs, onClearLogs }) {
+export default function ActivityLogModal({ show, onClose, logs, loading = false, onRefreshLogs }) {
   if (!show) return null;
 
   return (
@@ -59,22 +59,21 @@ export default function ActivityLogModal({ show, onClose, logs, onClearLogs }) {
             )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {logs.length > 0 && (
-              <button
-                onClick={onClearLogs}
-                style={{
-                  padding: "6px 12px",
-                  border: "1px solid " + COLORS.border,
-                  borderRadius: 6,
-                  background: COLORS.faint,
-                  color: COLORS.muted,
-                  fontSize: 12,
-                  cursor: "pointer",
-                }}
-              >
-                Clear all
-              </button>
-            )}
+            <button
+              onClick={onRefreshLogs}
+              disabled={loading}
+              style={{
+                padding: "6px 12px",
+                border: "1px solid " + COLORS.border,
+                borderRadius: 6,
+                background: COLORS.faint,
+                color: COLORS.muted,
+                fontSize: 12,
+                cursor: loading ? "not-allowed" : "pointer",
+              }}
+            >
+              {loading ? "Loading..." : "Refresh"}
+            </button>
             <button
               onClick={onClose}
               style={{
@@ -132,7 +131,23 @@ export default function ActivityLogModal({ show, onClose, logs, onClearLogs }) {
               </p>
             </div>
           ) : (
-            logs.map((log, idx) => (
+            logs.map((log, idx) => {
+              const actionLabel = {
+                STOCK_IN: "Stock in",
+                SALE: "Sale",
+                SALE_REVERSAL: "Sale reversal",
+                ADJUSTMENT: "Manual adjustment",
+                OPENING: "Opening balance",
+              }[log.movement_type] || log.action || "Activity";
+              const quantity = Number(log.quantity ?? log.qty ?? 0);
+              const isNegative = quantity < 0;
+              const productName = log.product_name || log.productName || "Unknown product";
+              const sku = log.product_sku || log.sku || "N/A";
+              const time = log.created_at
+                ? new Date(log.created_at).toLocaleString("en-PH")
+                : log.time;
+
+              return (
               <div
                 key={log.id}
                 style={{
@@ -156,29 +171,32 @@ export default function ActivityLogModal({ show, onClose, logs, onClearLogs }) {
                       flexShrink: 0,
                       background:
                         log.action === "Added product"
+                          || log.movement_type === "OPENING"
                           ? "#e9f9f0"
-                          : log.action === "Bulk import"
+                          : log.action === "Bulk import" || log.movement_type === "STOCK_IN"
                           ? "#e6f1fb"
-                          : log.action === "Stock added"
+                          : log.action === "Stock added" || quantity > 0
                           ? COLORS.primaryLight
                           : "#fef2f2",
                       color:
                         log.action === "Added product"
+                          || log.movement_type === "OPENING"
                           ? COLORS.success
-                          : log.action === "Bulk import"
+                          : log.action === "Bulk import" || log.movement_type === "STOCK_IN"
                           ? COLORS.info
-                          : log.action === "Stock added"
+                          : log.action === "Stock added" || quantity > 0
                           ? COLORS.primary
                           : COLORS.danger,
                       fontSize: 14,
                       fontWeight: 700,
                     }}
                   >
-                    {log.action === "Added product"
+                      {log.action === "Added product"
+                      || log.movement_type === "OPENING"
                       ? "+"
-                      : log.action === "Bulk import"
+                      : log.action === "Bulk import" || log.movement_type === "STOCK_IN"
                       ? "↑"
-                      : log.action === "Stock added"
+                      : log.action === "Stock added" || quantity > 0
                       ? "↑"
                       : "↓"}
                   </div>
@@ -194,10 +212,11 @@ export default function ActivityLogModal({ show, onClose, logs, onClearLogs }) {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {log.action}: <strong>{log.productName}</strong>
+                      {actionLabel}: <strong>{productName}</strong>
                     </p>
                     <p style={{ margin: "2px 0 0", fontSize: 12, color: COLORS.muted }}>
-                      SKU: {log.sku} · {log.time}
+                      SKU: {sku} · {time}
+                      {log.reason ? ` · ${log.reason}` : ""}
                     </p>
                   </div>
                 </div>
@@ -205,16 +224,17 @@ export default function ActivityLogModal({ show, onClose, logs, onClearLogs }) {
                   style={{
                     fontSize: 13,
                     fontWeight: 700,
-                    color: log.action === "Stock removed" ? COLORS.danger : COLORS.primary,
+                    color: isNegative ? COLORS.danger : COLORS.primary,
                     whiteSpace: "nowrap",
                     flexShrink: 0,
                   }}
                 >
-                  {log.action === "Stock removed" ? "-" : "+"}
-                  {log.qty} units
+                  {isNegative ? "" : "+"}
+                  {quantity} units
                 </span>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

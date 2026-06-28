@@ -6,18 +6,14 @@ import MetricCard from "./MetricCard";
 import RecentSales from "./RecentSales";
 import LowStockList from "./LowStockList";
 import { apiCalls } from "../../services/api";
-
-// Helper to parse sale amount from different field names
-const getAmount = (sale) => {
-  const amount = sale.total || sale.amount || sale.total_amount || sale.grand_total || '0';
-  // Parse as float to handle string values from backend (e.g., "224.00")
-  const parsed = parseFloat(amount);
-  return isNaN(parsed) ? 0 : parsed;
-};
+import { getApiErrorMessage } from "../../utils/apiErrors";
+import { isProductLowStock } from "../../utils/productFields";
 
 export default function Dashboard({ products, sales }) {
   const [dailySummary, setDailySummary] = useState(null);
   const [todaySalesCount, setTodaySalesCount] = useState(0);
+  const [lowStockProducts, setLowStockProducts] = useState([]);
+  const [lowStockLoaded, setLowStockLoaded] = useState(false);
   
   // Fetch today's sales summary from backend
   useEffect(() => {
@@ -37,6 +33,22 @@ export default function Dashboard({ products, sales }) {
     };
     fetchDailySummary();
   }, [sales]); // Re-fetch when sales list changes
+
+  useEffect(() => {
+    const fetchLowStock = async () => {
+      try {
+        const response = await apiCalls.getLowStockProducts();
+        const data = Array.isArray(response.data) ? response.data : (response.data.results || []);
+        setLowStockProducts(data);
+        setLowStockLoaded(true);
+      } catch (err) {
+        console.error("Failed to fetch low stock products:", getApiErrorMessage(err));
+        setLowStockProducts((products || []).filter(isProductLowStock));
+        setLowStockLoaded(false);
+      }
+    };
+    fetchLowStock();
+  }, [products]);
   
   // Parse today's revenue from daily summary (endpoint returns 'gross_sales')
   // Also calculate from sales list as fallback if endpoint shows 0
@@ -60,7 +72,7 @@ export default function Dashboard({ products, sales }) {
   const todayTotal = calculateTodayTotal();
   const todaySalesCountDisplay = todaySalesCount || (dailySummary?.transactions || dailySummary?.sales_count || 0);
   
-  const lowStock = (products || []).filter((p) => p && p.stock !== undefined && p.reorder !== undefined && p.stock <= p.reorder);
+  const lowStock = lowStockLoaded ? lowStockProducts : (products || []).filter(isProductLowStock);
   const recent = (sales || []).slice(0, 5);
 
   const metrics = [

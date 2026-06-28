@@ -89,7 +89,7 @@ export default function App() {
         <>
           {tab === "dashboard" && <Dashboard products={products} sales={sales} />}
           {tab === "pos" && <POS products={products} onSale={handleSale} onRefreshData={refreshData} />}
-          {tab === "inventory" && <Inventory products={products} setProducts={setProducts} />}
+          {tab === "inventory" && <Inventory products={products} onRefreshData={refreshData} />}
           {tab === "sales" && <SalesHistory sales={sales} onRefreshData={refreshData} />}
           {tab === "reports" && <Analytics />}
         </>

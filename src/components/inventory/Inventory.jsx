@@ -1,57 +1,93 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { apiCalls } from "../../services/api";
+import { getApiErrorMessage } from "../../utils/apiErrors";
 import InventoryToolbar from "./InventoryToolbar";
 import AddProductModal from "./AddProductModal";
 import ActivityLogModal from "./ActivityLogModal";
 import StockAdjustModal from "./StockAdjustModal";
 import ProductTable from "./ProductTable";
 
-export default function Inventory({ products, setProducts }) {
+export default function Inventory({ products, onRefreshData }) {
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState({ name: "", sku: "", price: "", cost: "", stock: "", reorder: "", category: "" });
   const [stockLogs, setStockLogs] = useState([]);
   const [showLog, setShowLog] = useState(false);
   const [adjustModal, setAdjustModal] = useState(null);
+  const [loadingAction, setLoadingAction] = useState(false);
+  const [logLoading, setLogLoading] = useState(false);
+  const [message, setMessage] = useState(null);
 
   const filtered = (products || []).filter(
-    (p) => p && (p.name || '').toLowerCase().includes(search.toLowerCase()) || (p.sku || '').toLowerCase().includes(search.toLowerCase())
+    (p) => p && (
+      (p.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.sku || '').toLowerCase().includes(search.toLowerCase())
+    )
   );
 
-  const addLog = (action, product, qty) => {
-    const entry = {
-      id: Date.now() + Math.random(),
-      time: new Date().toLocaleString("en-PH"),
-      action,
-      productName: product.name,
-      sku: product.sku,
-      qty,
-    };
-    setStockLogs((prev) => [entry, ...prev]);
-  };
+  const normalizeList = (data) => Array.isArray(data) ? data : (data?.results || []);
 
-  const addProduct = (e) => {
+  const loadStockLogs = useCallback(async () => {
+    setLogLoading(true);
+    try {
+      const response = await apiCalls.getStockMovements({ ordering: "-created_at" });
+      setStockLogs(normalizeList(response.data));
+    } catch (err) {
+      setMessage({ type: "error", text: getApiErrorMessage(err, "Unable to load inventory activity log.") });
+    } finally {
+      setLogLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStockLogs();
+  }, [loadStockLogs]);
+
+  const addProduct = async (e) => {
     e.preventDefault();
-    const p = {
-      id: Date.now(),
-      name: form.name,
-      sku: form.sku,
-      price: parseFloat(form.price) || 0,
-      cost: parseFloat(form.cost) || 0,
-      stock: parseInt(form.stock) || 0,
-      reorder: parseInt(form.reorder) || 5,
-      category: form.category || "General",
-    };
-    setProducts((prev) => [...prev, p]);
-    addLog("Added product", p, p.stock);
-    setForm({ name: "", sku: "", price: "", cost: "", stock: "", reorder: "", category: "" });
-    setShowAdd(false);
+    setLoadingAction(true);
+    setMessage(null);
+    try {
+      const payload = {
+        name: form.name.trim(),
+        sku: form.sku.trim(),
+        barcode: "",
+        category: form.category && !Number.isNaN(Number(form.category)) ? Number(form.category) : null,
+        unit: "pc",
+        selling_price: String(parseFloat(form.price) || 0),
+        cost_price: String(parseFloat(form.cost) || 0),
+        reorder_level: String(parseFloat(form.reorder) || 0),
+        is_active: true,
+      };
+
+      const created = await apiCalls.createProduct(payload);
+      const openingStock = parseFloat(form.stock) || 0;
+
+      if (openingStock > 0) {
+        await apiCalls.adjustStock({
+          product: created.data.id,
+          new_quantity: String(openingStock),
+          reason: "Opening stock for new product",
+        });
+      }
+
+      await onRefreshData?.();
+      await loadStockLogs();
+      setForm({ name: "", sku: "", price: "", cost: "", stock: "", reorder: "", category: "" });
+      setShowAdd(false);
+      setMessage({ type: "success", text: "Product saved to the backend." });
+    } catch (err) {
+      setMessage({ type: "error", text: getApiErrorMessage(err, "Unable to save product.") });
+    } finally {
+      setLoadingAction(false);
+    }
   };
 
-  const handleCSV = (e) => {
+  const handleCSV = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       const lines = ev.target.result.split("\n").filter(Boolean);
       const header = lines[0].split(",").map((h) => h.trim().toLowerCase());
       const rows = lines
@@ -61,7 +97,6 @@ export default function Inventory({ products, setProducts }) {
           const obj = {};
           header.forEach((h, i) => (obj[h] = vals[i] ? vals[i].trim() : ""));
           return {
-            id: Date.now() + Math.random(),
             name: obj.name || obj.product_name || "",
             sku: obj.sku || obj.code || "",
             price: parseFloat(obj.price || obj.unit_price || 0) || 0,
@@ -72,8 +107,38 @@ export default function Inventory({ products, setProducts }) {
           };
         })
         .filter((r) => r.name);
-      rows.forEach((r) => addLog("Bulk import", r, r.stock));
-      setProducts((prev) => [...prev, ...rows]);
+
+      setLoadingAction(true);
+      setMessage(null);
+      try {
+        for (const row of rows) {
+          const created = await apiCalls.createProduct({
+            name: row.name,
+            sku: row.sku,
+            barcode: "",
+            category: row.category && !Number.isNaN(Number(row.category)) ? Number(row.category) : null,
+            unit: "pc",
+            selling_price: String(row.price),
+            cost_price: String(row.cost),
+            reorder_level: String(row.reorder),
+            is_active: true,
+          });
+          if (row.stock > 0) {
+            await apiCalls.adjustStock({
+              product: created.data.id,
+              new_quantity: String(row.stock),
+              reason: "Opening stock from CSV import",
+            });
+          }
+        }
+        await onRefreshData?.();
+        await loadStockLogs();
+        setMessage({ type: "success", text: `${rows.length} products imported.` });
+      } catch (err) {
+        setMessage({ type: "error", text: getApiErrorMessage(err, "Unable to import CSV products.") });
+      } finally {
+        setLoadingAction(false);
+      }
     };
     reader.readAsText(file);
     e.target.value = "";
@@ -83,17 +148,25 @@ export default function Inventory({ products, setProducts }) {
     setAdjustModal({ product, type });
   };
 
-  const confirmAdjust = (product, type, qty) => {
-    setProducts((prev) =>
-      (prev || []).map((p) => {
-        if (p.id !== product.id) return p;
-        const currentStock = p.stock || p.quantity_on_hand || 0;
-        const newStock = type === "add" ? currentStock + qty : Math.max(0, currentStock - qty);
-        return { ...p, stock: newStock, quantity_on_hand: newStock };
-      })
-    );
-    addLog(type === "add" ? "Stock added" : "Stock removed", product, qty);
-    setAdjustModal(null);
+  const confirmAdjust = async (product, type, qty) => {
+    setLoadingAction(true);
+    setMessage(null);
+    try {
+      const delta = type === "add" ? qty : -qty;
+      await apiCalls.adjustStock({
+        product: product.id,
+        delta: String(delta),
+        reason: type === "add" ? "Manual stock addition" : "Manual stock removal",
+      });
+      await onRefreshData?.();
+      await loadStockLogs();
+      setAdjustModal(null);
+      setMessage({ type: "success", text: "Stock adjustment saved." });
+    } catch (err) {
+      setMessage({ type: "error", text: getApiErrorMessage(err, "Unable to adjust stock.") });
+    } finally {
+      setLoadingAction(false);
+    }
   };
 
   return (
@@ -107,25 +180,45 @@ export default function Inventory({ products, setProducts }) {
         logCount={stockLogs.length}
       />
 
+      {message && (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: "10px 12px",
+            borderRadius: 8,
+            fontSize: 13,
+            color: message.type === "error" ? "#991b1b" : "#166534",
+            background: message.type === "error" ? "#fef2f2" : "#f0fdf4",
+            border: `1px solid ${message.type === "error" ? "#fecaca" : "#bbf7d0"}`,
+          }}
+        >
+          {message.text}
+        </div>
+      )}
+
       <AddProductModal
         show={showAdd}
         onClose={() => setShowAdd(false)}
         form={form}
         setForm={setForm}
         onSubmit={addProduct}
+        loading={loadingAction}
       />
 
       <ActivityLogModal
         show={showLog}
         onClose={() => setShowLog(false)}
         logs={stockLogs}
-        onClearLogs={() => setStockLogs([])}
+        loading={logLoading}
+        onRefreshLogs={loadStockLogs}
       />
 
       <StockAdjustModal
         product={adjustModal?.product ?? null}
+        initialType={adjustModal?.type ?? "add"}
         onClose={() => setAdjustModal(null)}
         onConfirm={confirmAdjust}
+        loading={loadingAction}
       />
 
       <ProductTable products={filtered} onAdjust={openAdjust} />

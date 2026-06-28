@@ -10,7 +10,7 @@ const FIELDS = [
   ["Reorder level", "reorder", "number"],
 ];
 
-export default function AddProductModal({ show, onClose, form, setForm, onSubmit }) {
+export default function AddProductModal({ show, onClose, form, setForm, onSubmit, loading = false }) {
   if (!show) return null;
 
   const handleCancel = () => {
@@ -30,7 +30,7 @@ export default function AddProductModal({ show, onClose, form, setForm, onSubmit
         zIndex: 100,
         padding: "1rem",
       }}
-      onClick={onClose}
+      onClick={() => !loading && onClose()}
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -77,7 +77,7 @@ export default function AddProductModal({ show, onClose, form, setForm, onSubmit
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: COLORS.text }}>New product</h3>
           </div>
           <button
-            onClick={onClose}
+          onClick={() => !loading && onClose()}
             style={{
               width: 32,
               height: 32,
@@ -118,6 +118,7 @@ export default function AddProductModal({ show, onClose, form, setForm, onSubmit
                 <input
                   required={["name", "sku", "price", "cost", "stock", "reorder"].includes(key)}
                   type={type}
+                  disabled={loading}
                   value={form[key]}
                   onChange={(e) => {
                     let value = e.target.value;
@@ -155,23 +156,25 @@ export default function AddProductModal({ show, onClose, form, setForm, onSubmit
           >
             <button
               type="submit"
+              disabled={loading}
               style={{
                 flex: 1,
                 padding: "11px 20px",
-                background: COLORS.primary,
+                background: loading ? COLORS.border : COLORS.primary,
                 color: "#fff",
                 border: "none",
                 borderRadius: 8,
                 fontSize: 14,
                 fontWeight: 600,
-                cursor: "pointer",
+                cursor: loading ? "not-allowed" : "pointer",
               }}
             >
-              Save product
+              {loading ? "Saving..." : "Save product"}
             </button>
             <button
               type="button"
               onClick={handleCancel}
+              disabled={loading}
               style={{
                 padding: "11px 20px",
                 background: COLORS.faint,
@@ -179,7 +182,7 @@ export default function AddProductModal({ show, onClose, form, setForm, onSubmit
                 border: "none",
                 borderRadius: 8,
                 fontSize: 14,
-                cursor: "pointer",
+                cursor: loading ? "not-allowed" : "pointer",
               }}
             >
               Cancel
