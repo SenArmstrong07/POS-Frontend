@@ -6,6 +6,7 @@ import POS from "./components/pos/POS";
 import Inventory from "./components/inventory/Inventory";
 import SalesHistory from "./components/sales/SalesHistory";
 import Analytics from "./components/analytics/Analytics";
+import ToastProvider from "./components/ui/ToastProvider";
 import { DEMO_PRODUCTS, DEMO_SALES } from "./constants/demoData";
 import { apiCalls, getAuthToken, clearAuthTokens } from "./services/api";
 import { getApiErrorMessage } from "./utils/apiErrors";
@@ -115,32 +116,29 @@ export default function App() {
     // Tokens are stored in localStorage by AuthPage's handleLoginSubmit.
   };
 
-  const handleLogout = () => {
-    clearAuthTokens();
-    setUser(null);
-  };
-
-  // While checking localStorage for an existing session, render nothing
-  // (or a tiny loading state) instead of flashing the login screen.
-  if (checkingSession) {
-    return null;
+  if (!user) {
+    return (
+      <ToastProvider>
+        <AuthPage onLogin={handleLogin} />
+      </ToastProvider>
+    );
   }
 
-  if (!user) return <AuthPage onLogin={handleLogin} />;
-
   return (
-    <AppLayout user={user} onLogout={handleLogout} activeTab={tab} setActiveTab={setTab}>
-      {loading && <div>Loading...</div>}
-      {error && <div style={{ color: 'red' }}>{error}</div>}
-      {!loading && (
-        <>
-          {tab === "dashboard" && <Dashboard products={products} sales={sales} />}
-          {tab === "pos" && <POS products={products} onSale={handleSale} onRefreshData={refreshData} />}
-          {tab === "inventory" && <Inventory products={products} onRefreshData={refreshData} />}
-          {tab === "sales" && <SalesHistory sales={sales} onRefreshData={refreshData} />}
-          {tab === "reports" && <Analytics />}
-        </>
-      )}
-    </AppLayout>
+    <ToastProvider>
+      <AppLayout user={user} onLogout={() => setUser(null)} activeTab={tab} setActiveTab={setTab}>
+        {loading && <div>Loading...</div>}
+        {error && <div style={{ color: 'red' }}>{error}</div>}
+        {!loading && (
+          <>
+            {tab === "dashboard" && <Dashboard products={products} sales={sales} />}
+            {tab === "pos" && <POS products={products} onSale={handleSale} onRefreshData={refreshData} />}
+            {tab === "inventory" && <Inventory products={products} onRefreshData={refreshData} />}
+            {tab === "sales" && <SalesHistory sales={sales} onRefreshData={refreshData} />}
+            {tab === "reports" && <Analytics />}
+          </>
+        )}
+      </AppLayout>
+    </ToastProvider>
   );
 }

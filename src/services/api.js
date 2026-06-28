@@ -1,5 +1,7 @@
 // src/services/api.js
 import axios from 'axios';
+import { getApiErrorMessage } from '../utils/apiErrors';
+import { showErrorToast, showSuccessToast } from '../utils/toast';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
@@ -49,58 +51,41 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// NEW: on a 401, try to refresh the access token once and retry the
-// original request. If refresh also fails (refresh token missing/expired),
-// clear storage so the app falls back to the login screen instead of
-// looping on 401s.
-let refreshPromise = null;
+const buildSuccessMessage = (config) => {
+  if (config.toast === false || config.toast?.success === false) return null;
+  if (config.toast?.success) return config.toast.success;
+
+  const method = (config.method || "get").toLowerCase();
+  if (method === "get") return null;
+
+  const url = config.url || "";
+  if (url.includes("/auth/login/")) return "Signed in successfully.";
+  if (url.includes("/auth/register/")) return "Account created successfully.";
+  if (url.includes("/catalog/products/")) return method === "post" ? "Product added successfully." : "Product updated successfully.";
+  if (url.includes("/inventory/movements/adjust/")) return "Inventory updated successfully.";
+  if (url.includes("/sales/sales/") && url.includes("/complete/")) return "Sale completed successfully.";
+  if (url.includes("/sales/sales/") && url.includes("/void/")) return "Sale voided successfully.";
+  if (url.includes("/item-void-requests/") && url.includes("/approve/")) return "Item void approved successfully.";
+  if (url.includes("/item-void-requests/") && url.includes("/deny/")) return "Item void denied.";
+
+  if (method === "post") return "Saved successfully.";
+  if (method === "patch" || method === "put") return "Updated successfully.";
+  if (method === "delete") return "Deleted successfully.";
+  return null;
+};
 
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const { response, config } = error;
-
-    if (!response || response.status !== 401 || config._retried) {
-      return Promise.reject(error);
+  (response) => {
+    const message = buildSuccessMessage(response.config || {});
+    if (message) showSuccessToast(message);
+    return response;
+  },
+  (error) => {
+    if (error?.config?.toast !== false && error?.config?.toast?.error !== false) {
+      const message = error?.config?.toast?.error || getApiErrorMessage(error, "Request failed.");
+      showErrorToast(message);
     }
-
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) {
-      clearAuthTokens();
-      return Promise.reject(error);
-    }
-
-    config._retried = true;
-
-    try {
-      // Multiple requests can 401 at once — share one in-flight refresh
-      // call instead of firing a refresh request per failed request.
-      if (!refreshPromise) {
-        refreshPromise = axios
-          .post(`${API_BASE_URL}/auth/refresh/`, { refresh: refreshToken })
-          .finally(() => {
-            refreshPromise = null;
-          });
-      }
-      const refreshRes = await refreshPromise;
-      const newAccess = refreshRes.data.access;
-      setAuthToken(newAccess);
-
-      // SIMPLE_JWT has ROTATE_REFRESH_TOKENS + BLACKLIST_AFTER_ROTATION on
-      // the backend: every successful refresh blacklists the refresh token
-      // that was just used and issues a brand new one. If we don't save
-      // this, the NEXT refresh attempt uses a dead token and logs the user
-      // out — even though this refresh just succeeded.
-      if (refreshRes.data.refresh) {
-        setRefreshToken(refreshRes.data.refresh);
-      }
-
-      config.headers.Authorization = `Bearer ${newAccess}`;
-      return api(config);
-    } catch (refreshError) {
-      clearAuthTokens();
-      return Promise.reject(refreshError);
-    }
+    return Promise.reject(error);
   }
 );
 
@@ -121,13 +106,13 @@ export const apiCalls = {
   // Sales - POS
   getSales: () => api.get('/sales/sales/'),
   getSaleDetail: (id) => api.get(`/sales/sales/${id}/`),
-  createSale: (saleData) => api.post('/sales/sales/', saleData),
-  setSaleItems: (id, cartItems) => api.post(`/sales/sales/${id}/set_items/`, cartItems),
+  createSale: (saleData) => api.post('/sales/sales/', saleData, { toast: false }),
+  setSaleItems: (id, cartItems) => api.post(`/sales/sales/${id}/set_items/`, cartItems, { toast: false }),
   completeSale: (id, payments) => api.post(`/sales/sales/${id}/complete/`, { payments }),
   voidSale: (id, payload) => api.post(`/sales/sales/${id}/void/`, payload),
   getReceipt: (id) => api.get(`/sales/sales/${id}/receipt/`),
   getDailySummary: () => api.get('/sales/sales/daily_summary/'),
-  createItemVoidRequest: (payload) => api.post('/sales/item-void-requests/', payload),
+  createItemVoidRequest: (payload) => api.post('/sales/item-void-requests/', payload, { toast: false }),
   approveItemVoidRequest: (id, payload) => api.post(`/sales/item-void-requests/${id}/approve/`, payload),
   denyItemVoidRequest: (id, payload) => api.post(`/sales/item-void-requests/${id}/deny/`, payload),
 

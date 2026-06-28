@@ -12,7 +12,6 @@ export default function SalesHistory({ sales, onRefreshData }) {
   const [voidTarget, setVoidTarget] = useState(null);
   const [voidLoading, setVoidLoading] = useState(false);
   const [voidError, setVoidError] = useState("");
-  const [toast, setToast] = useState(null);
 
   // Helper to get payment method from payments array or fallback fields
   const getPaymentMethod = (sale) => {
@@ -46,22 +45,6 @@ export default function SalesHistory({ sales, onRefreshData }) {
 
   return (
     <div>
-      {toast && (
-        <div
-          style={{
-            marginBottom: 12,
-            padding: "10px 12px",
-            borderRadius: 8,
-            fontSize: 13,
-            color: toast.type === "error" ? "#991b1b" : "#166534",
-            background: toast.type === "error" ? "#fef2f2" : "#f0fdf4",
-            border: `1px solid ${toast.type === "error" ? "#fecaca" : "#bbf7d0"}`,
-          }}
-        >
-          {toast.message}
-        </div>
-      )}
-
       <SalesFilters
         payFilter={payFilter}
         setPayFilter={setPayFilter}
@@ -76,7 +59,6 @@ export default function SalesHistory({ sales, onRefreshData }) {
         onVoidSale={(sale, selectedItems) => {
           setVoidTarget({ sale, selectedItems });
           setVoidError("");
-          setToast(null);
         }}
       />
 
@@ -121,7 +103,6 @@ export default function SalesHistory({ sales, onRefreshData }) {
             setAuthToken(cashierToken);
             await onRefreshData?.();
             setVoidTarget(null);
-            setToast({ type: "success", message: "Sale voided successfully." });
           } catch (err) {
             setAuthToken(cashierToken);
             setVoidError(getApiErrorMessage(err, "Unable to void sale."));
