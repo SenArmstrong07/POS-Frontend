@@ -1,5 +1,7 @@
 // src/services/api.js
 import axios from 'axios';
+import { getApiErrorMessage } from '../utils/apiErrors';
+import { showErrorToast, showSuccessToast } from '../utils/toast';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
@@ -30,6 +32,44 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+const buildSuccessMessage = (config) => {
+  if (config.toast === false || config.toast?.success === false) return null;
+  if (config.toast?.success) return config.toast.success;
+
+  const method = (config.method || "get").toLowerCase();
+  if (method === "get") return null;
+
+  const url = config.url || "";
+  if (url.includes("/auth/login/")) return "Signed in successfully.";
+  if (url.includes("/auth/register/")) return "Account created successfully.";
+  if (url.includes("/catalog/products/")) return method === "post" ? "Product added successfully." : "Product updated successfully.";
+  if (url.includes("/inventory/movements/adjust/")) return "Inventory updated successfully.";
+  if (url.includes("/sales/sales/") && url.includes("/complete/")) return "Sale completed successfully.";
+  if (url.includes("/sales/sales/") && url.includes("/void/")) return "Sale voided successfully.";
+  if (url.includes("/item-void-requests/") && url.includes("/approve/")) return "Item void approved successfully.";
+  if (url.includes("/item-void-requests/") && url.includes("/deny/")) return "Item void denied.";
+
+  if (method === "post") return "Saved successfully.";
+  if (method === "patch" || method === "put") return "Updated successfully.";
+  if (method === "delete") return "Deleted successfully.";
+  return null;
+};
+
+api.interceptors.response.use(
+  (response) => {
+    const message = buildSuccessMessage(response.config || {});
+    if (message) showSuccessToast(message);
+    return response;
+  },
+  (error) => {
+    if (error?.config?.toast !== false && error?.config?.toast?.error !== false) {
+      const message = error?.config?.toast?.error || getApiErrorMessage(error, "Request failed.");
+      showErrorToast(message);
+    }
+    return Promise.reject(error);
+  }
+);
+
 // API Endpoints
 export const apiCalls = {
   // Catalog - Products
@@ -47,13 +87,13 @@ export const apiCalls = {
   // Sales - POS
   getSales: () => api.get('/sales/sales/'),
   getSaleDetail: (id) => api.get(`/sales/sales/${id}/`),
-  createSale: (saleData) => api.post('/sales/sales/', saleData),
-  setSaleItems: (id, cartItems) => api.post(`/sales/sales/${id}/set_items/`, cartItems),
+  createSale: (saleData) => api.post('/sales/sales/', saleData, { toast: false }),
+  setSaleItems: (id, cartItems) => api.post(`/sales/sales/${id}/set_items/`, cartItems, { toast: false }),
   completeSale: (id, payments) => api.post(`/sales/sales/${id}/complete/`, { payments }),
   voidSale: (id, payload) => api.post(`/sales/sales/${id}/void/`, payload),
   getReceipt: (id) => api.get(`/sales/sales/${id}/receipt/`),
   getDailySummary: () => api.get('/sales/sales/daily_summary/'),
-  createItemVoidRequest: (payload) => api.post('/sales/item-void-requests/', payload),
+  createItemVoidRequest: (payload) => api.post('/sales/item-void-requests/', payload, { toast: false }),
   approveItemVoidRequest: (id, payload) => api.post(`/sales/item-void-requests/${id}/approve/`, payload),
   denyItemVoidRequest: (id, payload) => api.post(`/sales/item-void-requests/${id}/deny/`, payload),
 

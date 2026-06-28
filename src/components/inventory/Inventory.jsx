@@ -16,7 +16,6 @@ export default function Inventory({ products, onRefreshData }) {
   const [adjustModal, setAdjustModal] = useState(null);
   const [loadingAction, setLoadingAction] = useState(false);
   const [logLoading, setLogLoading] = useState(false);
-  const [message, setMessage] = useState(null);
 
   const filtered = (products || []).filter(
     (p) => p && (
@@ -33,7 +32,7 @@ export default function Inventory({ products, onRefreshData }) {
       const response = await apiCalls.getStockMovements({ ordering: "-created_at" });
       setStockLogs(normalizeList(response.data));
     } catch (err) {
-      setMessage({ type: "error", text: getApiErrorMessage(err, "Unable to load inventory activity log.") });
+      console.error("Unable to load inventory activity log:", getApiErrorMessage(err));
     } finally {
       setLogLoading(false);
     }
@@ -46,7 +45,6 @@ export default function Inventory({ products, onRefreshData }) {
   const addProduct = async (e) => {
     e.preventDefault();
     setLoadingAction(true);
-    setMessage(null);
     try {
       const payload = {
         name: form.name.trim(),
@@ -75,9 +73,8 @@ export default function Inventory({ products, onRefreshData }) {
       await loadStockLogs();
       setForm({ name: "", sku: "", price: "", cost: "", stock: "", reorder: "", category: "" });
       setShowAdd(false);
-      setMessage({ type: "success", text: "Product saved to the backend." });
     } catch (err) {
-      setMessage({ type: "error", text: getApiErrorMessage(err, "Unable to save product.") });
+      console.error("Unable to save product:", getApiErrorMessage(err));
     } finally {
       setLoadingAction(false);
     }
@@ -109,7 +106,6 @@ export default function Inventory({ products, onRefreshData }) {
         .filter((r) => r.name);
 
       setLoadingAction(true);
-      setMessage(null);
       try {
         for (const row of rows) {
           const created = await apiCalls.createProduct({
@@ -133,9 +129,8 @@ export default function Inventory({ products, onRefreshData }) {
         }
         await onRefreshData?.();
         await loadStockLogs();
-        setMessage({ type: "success", text: `${rows.length} products imported.` });
       } catch (err) {
-        setMessage({ type: "error", text: getApiErrorMessage(err, "Unable to import CSV products.") });
+        console.error("Unable to import CSV products:", getApiErrorMessage(err));
       } finally {
         setLoadingAction(false);
       }
@@ -150,7 +145,6 @@ export default function Inventory({ products, onRefreshData }) {
 
   const confirmAdjust = async (product, type, qty) => {
     setLoadingAction(true);
-    setMessage(null);
     try {
       const delta = type === "add" ? qty : -qty;
       await apiCalls.adjustStock({
@@ -161,9 +155,8 @@ export default function Inventory({ products, onRefreshData }) {
       await onRefreshData?.();
       await loadStockLogs();
       setAdjustModal(null);
-      setMessage({ type: "success", text: "Stock adjustment saved." });
     } catch (err) {
-      setMessage({ type: "error", text: getApiErrorMessage(err, "Unable to adjust stock.") });
+      console.error("Unable to adjust stock:", getApiErrorMessage(err));
     } finally {
       setLoadingAction(false);
     }
@@ -179,22 +172,6 @@ export default function Inventory({ products, onRefreshData }) {
         onCSVImport={handleCSV}
         logCount={stockLogs.length}
       />
-
-      {message && (
-        <div
-          style={{
-            marginBottom: 12,
-            padding: "10px 12px",
-            borderRadius: 8,
-            fontSize: 13,
-            color: message.type === "error" ? "#991b1b" : "#166534",
-            background: message.type === "error" ? "#fef2f2" : "#f0fdf4",
-            border: `1px solid ${message.type === "error" ? "#fecaca" : "#bbf7d0"}`,
-          }}
-        >
-          {message.text}
-        </div>
-      )}
 
       <AddProductModal
         show={showAdd}
