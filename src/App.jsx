@@ -8,6 +8,7 @@ import SalesHistory from "./components/sales/SalesHistory";
 import Analytics from "./components/analytics/Analytics";
 import { DEMO_PRODUCTS, DEMO_SALES } from "./constants/demoData";
 import { apiCalls } from "./services/api";
+import { getApiErrorMessage } from "./utils/apiErrors";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -53,57 +54,24 @@ export default function App() {
     }
   };
 
-  const handleSale = async (sale, cart) => {
+  const handleSale = async (saleId, payments) => {
     try {
-      console.log("Creating sale with cart:", cart);
-      console.log("Sale data:", sale);
-      
-      // Format cart items for backend: [{"product": id, "quantity": qty}, ...]
-      const cartItems = (cart || []).map(item => ({
-        product: item.id,
-        quantity: item.qty || 1
-      }));
-
-      // Step 1: Create a new sale (cart) with items
-      const saleRes = await apiCalls.createSale({
-        cart: cartItems,
-        discount: sale.discount || null
-      });
-      console.log("Sale created:", saleRes.data);
-      const saleId = saleRes.data.id;
-
-      // Step 2: Complete the sale with payment info
-      // Convert payment method to uppercase (backend expects: CASH, CARD, GCASH, MAYA)
-      const paymentMethod = (sale.payment || 'Cash').toUpperCase();
-      
-      // Calculate total sale amount (sum of all items)
-      const saleAmount = parseFloat(sale.total) || 0;
-      
-      // Tendered amount is what customer gave (from the form input)
-      // This is passed in sale.tendered
-      const tenderedAmount = parseFloat(sale.tendered) || 0;
-      
-      const payments = [{
-        method: paymentMethod,
-        amount: saleAmount,
-        tendered: tenderedAmount  // Include tendered field for CASH payment validation
-      }];
-      console.log("Completing sale with payments:", payments);
-      
-      await apiCalls.completeSale(saleId, payments);
-      console.log("Sale completed successfully");
-
-      // Step 3: Refresh sales data from backend to ensure persistence
-      // Don't show loading state during checkout to keep receipt visible
-      console.log("Refreshing data after successful sale...");
+      const response = await apiCalls.completeSale(saleId, payments);
       await fetchData(false);
+      return response.data;
     } catch (err) {
       console.error("Failed to save sale:", err);
       if (err.response?.data) {
         console.error("Backend error response:", JSON.stringify(err.response.data, null, 2));
       }
-      setError("Failed to save sale");
+      const message = getApiErrorMessage(err, "Failed to save sale");
+      setError(message);
+      throw err;
     }
+  };
+
+  const refreshData = async () => {
+    await fetchData(false);
   };
 
   const handleLogin = (userData) => {
@@ -120,9 +88,9 @@ export default function App() {
       {!loading && (
         <>
           {tab === "dashboard" && <Dashboard products={products} sales={sales} />}
-          {tab === "pos" && <POS products={products} onSale={handleSale} />}
+          {tab === "pos" && <POS products={products} onSale={handleSale} onRefreshData={refreshData} />}
           {tab === "inventory" && <Inventory products={products} setProducts={setProducts} />}
-          {tab === "sales" && <SalesHistory sales={sales} />}
+          {tab === "sales" && <SalesHistory sales={sales} onRefreshData={refreshData} />}
           {tab === "reports" && <Analytics />}
         </>
       )}

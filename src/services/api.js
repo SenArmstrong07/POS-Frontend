@@ -10,9 +10,18 @@ const api = axios.create({
   },
 });
 
+export const getAuthToken = () => localStorage.getItem('auth_token');
+export const setAuthToken = (token) => {
+  if (token) {
+    localStorage.setItem('auth_token', token);
+  } else {
+    localStorage.removeItem('auth_token');
+  }
+};
+
 // Add token to requests if it exists
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
   if (token) {
     // Check if token is already formatted with "Bearer "
     const formattedToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
@@ -33,8 +42,14 @@ export const apiCalls = {
   getSales: () => api.get('/sales/sales/'),
   getSaleDetail: (id) => api.get(`/sales/sales/${id}/`),
   createSale: (saleData) => api.post('/sales/sales/', saleData),
+  setSaleItems: (id, cartItems) => api.post(`/sales/sales/${id}/set_items/`, cartItems),
   completeSale: (id, payments) => api.post(`/sales/sales/${id}/complete/`, { payments }),
+  voidSale: (id, payload) => api.post(`/sales/sales/${id}/void/`, payload),
+  getReceipt: (id) => api.get(`/sales/sales/${id}/receipt/`),
   getDailySummary: () => api.get('/sales/sales/daily_summary/'),
+  createItemVoidRequest: (payload) => api.post('/sales/item-void-requests/', payload),
+  approveItemVoidRequest: (id, payload) => api.post(`/sales/item-void-requests/${id}/approve/`, payload),
+  denyItemVoidRequest: (id, payload) => api.post(`/sales/item-void-requests/${id}/deny/`, payload),
 
   // Reports (Dashboard)
   getDashboard: () => api.get('/reports/dashboard/'),

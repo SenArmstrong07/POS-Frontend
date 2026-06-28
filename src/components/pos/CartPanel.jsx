@@ -2,7 +2,7 @@ import { COLORS } from "../../constants/colors";
 import { fmt } from "../../utils/format";
 import { CartIcon } from "../icons/Icons";
 
-export default function CartPanel({ cart, subtotal, onUpdateQty }) {
+export default function CartPanel({ cart, subtotal, onUpdateQty, onRequestVoid, disabled = false }) {
   return (
     <div
       style={{
@@ -81,13 +81,14 @@ export default function CartPanel({ cart, subtotal, onUpdateQty }) {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button
                   onClick={() => onUpdateQty(i.id, -1)}
+                  disabled={disabled}
                   style={{
                     width: 26,
                     height: 26,
                     border: `1px solid ${COLORS.border}`,
                     borderRadius: 6,
                     background: "#fff",
-                    cursor: "pointer",
+                    cursor: disabled ? "not-allowed" : "pointer",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -100,13 +101,14 @@ export default function CartPanel({ cart, subtotal, onUpdateQty }) {
                 <span style={{ fontSize: 14, fontWeight: 600, minWidth: 20, textAlign: "center" }}>{i.qty}</span>
                 <button
                   onClick={() => onUpdateQty(i.id, 1)}
+                  disabled={disabled}
                   style={{
                     width: 26,
                     height: 26,
                     border: `1px solid ${COLORS.border}`,
                     borderRadius: 6,
                     background: "#fff",
-                    cursor: "pointer",
+                    cursor: disabled ? "not-allowed" : "pointer",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -120,6 +122,25 @@ export default function CartPanel({ cart, subtotal, onUpdateQty }) {
               <span style={{ fontWeight: 600, fontSize: 14, color: COLORS.text, minWidth: 70, textAlign: "right" }}>
                 {fmt(i.price * i.qty)}
               </span>
+              <button
+                onClick={() => onRequestVoid(i)}
+                disabled={disabled}
+                title="Void item"
+                style={{
+                  width: 28,
+                  height: 28,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 6,
+                  background: "#fff",
+                  color: COLORS.danger,
+                  cursor: disabled ? "not-allowed" : "pointer",
+                  fontSize: 17,
+                  fontWeight: 700,
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
             </div>
           ))}
         </div>

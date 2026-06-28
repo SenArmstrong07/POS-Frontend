@@ -1,7 +1,7 @@
 import { COLORS } from "../../constants/colors";
 import { fmt } from "../../utils/format";
 
-export default function ReceiptView({ receipt, onNewTransaction }) {
+export default function ReceiptView({ receipt, onNewTransaction, onVoidSale }) {
   return (
     <div style={{ maxWidth: 440, margin: "0 auto" }}>
       <div
@@ -97,21 +97,38 @@ export default function ReceiptView({ receipt, onNewTransaction }) {
           )}
         </div>
 
-        <button
-          onClick={onNewTransaction}
-          style={{
-            background: COLORS.primary,
-            color: "#fff",
-            border: "none",
-            borderRadius: 10,
-            padding: "12px 32px",
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          New transaction
-        </button>
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+          <button
+            onClick={onVoidSale}
+            style={{
+              background: "#fff",
+              color: COLORS.danger,
+              border: `1px solid ${COLORS.danger}`,
+              borderRadius: 10,
+              padding: "12px 18px",
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Void sale
+          </button>
+          <button
+            onClick={onNewTransaction}
+            style={{
+              background: COLORS.primary,
+              color: "#fff",
+              border: "none",
+              borderRadius: 10,
+              padding: "12px 24px",
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            New transaction
+          </button>
+        </div>
       </div>
     </div>
   );
