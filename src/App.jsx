@@ -13,9 +13,9 @@ import { getApiErrorMessage } from "./utils/apiErrors";
 
 export default function App() {
   const [user, setUser] = useState(null);
-  // NEW: true while we check localStorage for an existing session on boot.
-  // Without this, the app would render <AuthPage /> for one frame on every
-  // refresh (since `user` starts null) even when a valid token exists.
+  // true while we check localStorage for an existing session on boot.
+  // Without this, the app renders <AuthPage /> on every refresh (since
+  // `user` starts null) even when a valid token already exists.
   const [checkingSession, setCheckingSession] = useState(true);
   const [tab, setTab] = useState("dashboard");
   const [products, setProducts] = useState([]);
@@ -23,7 +23,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // NEW: on first mount, if a token is already in localStorage (e.g. from
+  // On first mount, if a token is already in localStorage (e.g. from
   // before a page refresh), validate it against the backend and restore
   // the user session instead of falling back to the login screen.
   useEffect(() => {
@@ -116,6 +116,20 @@ export default function App() {
     // Tokens are stored in localStorage by AuthPage's handleLoginSubmit.
   };
 
+  // Clears both tokens (not just resetting `user` state) so a stale
+  // access/refresh pair can't silently log the "logged out" user back
+  // in on the next page load's session check above.
+  const handleLogout = () => {
+    clearAuthTokens();
+    setUser(null);
+  };
+
+  // While checking localStorage for an existing session, render nothing
+  // instead of flashing the login screen for one frame on every refresh.
+  if (checkingSession) {
+    return null;
+  }
+
   if (!user) {
     return (
       <ToastProvider>
@@ -126,7 +140,7 @@ export default function App() {
 
   return (
     <ToastProvider>
-      <AppLayout user={user} onLogout={() => setUser(null)} activeTab={tab} setActiveTab={setTab}>
+      <AppLayout user={user} onLogout={handleLogout} activeTab={tab} setActiveTab={setTab}>
         {loading && <div>Loading...</div>}
         {error && <div style={{ color: 'red' }}>{error}</div>}
         {!loading && (
