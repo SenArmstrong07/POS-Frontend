@@ -2,6 +2,10 @@ import { COLORS } from "../../constants/colors";
 import { fmt } from "../../utils/format";
 
 export default function ReceiptView({ receipt, onNewTransaction, onVoidSale }) {
+  const tenderedAmount = Number(
+    receipt?.tendered ?? receipt?.amount_tendered ?? receipt?.total ?? 0
+  );
+
   return (
     <div style={{ maxWidth: 440, margin: "0 auto" }}>
       <div
@@ -78,7 +82,7 @@ export default function ReceiptView({ receipt, onNewTransaction, onVoidSale }) {
             }}
           >
             <span>Tendered</span>
-            <span>{fmt(receipt.tendered)}</span>
+            <span>{fmt(Number.isFinite(tenderedAmount) ? tenderedAmount : 0)}</span>
           </div>
           {receipt.payment === "Cash" && (
             <div

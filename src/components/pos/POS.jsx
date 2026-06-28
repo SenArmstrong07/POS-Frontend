@@ -175,16 +175,20 @@ export default function POS({ products, onSale, onRefreshData }) {
   const checkout = async () => {
     if (cart.length === 0 || !activeSale || checkoutLoading) return;
     const paymentMethod = (payment || "Cash").toUpperCase();
+    const tenderedAmount = payment === "Cash" ? parseFloat(tendered || 0) : subtotal;
     const payments = [{
       method: paymentMethod,
       amount: String(subtotal),
-      tendered: String(payment === "Cash" ? parseFloat(tendered || 0) : subtotal),
+      tendered: String(tenderedAmount),
     }];
 
     setCheckoutLoading(true);
     setToast(null);
     try {
       const completedSale = await onSale(activeSale.id, payments);
+      const fallbackTendered = Number(
+        completedSale?.tendered ?? completedSale?.amount_tendered ?? tenderedAmount ?? subtotal
+      );
       setReceipt({
         ...completedSale,
         id: completedSale.receipt_no || completedSale.id,
@@ -192,8 +196,8 @@ export default function POS({ products, onSale, onRefreshData }) {
         date: completedSale.completed_at || new Date().toLocaleString("en-PH"),
         payment,
         total: parseFloat(completedSale.total || subtotal),
-        tendered: parseFloat(tendered || subtotal),
-        change: Math.max(0, change),
+        tendered: Number.isFinite(fallbackTendered) ? fallbackTendered : subtotal,
+        change: payment === "Cash" ? Math.max(0, change) : 0,
         cart,
       });
       setActiveSale(null);
