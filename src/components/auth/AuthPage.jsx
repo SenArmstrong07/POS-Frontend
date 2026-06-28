@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { apiCalls } from "../../services/api";
+import { setAuthToken, setRefreshToken } from "../../services/api";
 import AuthHeader from "./AuthHeader";
 import AuthTabs from "./AuthTabs";
 import LoginForm from "./LoginForm";
@@ -34,7 +35,12 @@ export default function AuthPage({ onLogin }) {
         throw new Error("No token in login response");
       }
 
-      localStorage.setItem("auth_token", token);
+      // Save access token (unchanged) AND the refresh token (was previously
+      // dropped entirely — this is what session persistence needs).
+      setAuthToken(token);
+      if (response.data.refresh) {
+        setRefreshToken(response.data.refresh);
+      }
 
       const user = {
         ...(response.data.user || {}),
@@ -59,7 +65,10 @@ export default function AuthPage({ onLogin }) {
     setError(null);
     try {
       const response = await apiCalls.signup({ name, email, password });
-      localStorage.setItem("auth_token", response.data.token);
+      setAuthToken(response.data.token);
+      if (response.data.refresh) {
+        setRefreshToken(response.data.refresh);
+      }
 
       const user = {
         name,

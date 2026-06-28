@@ -21,6 +21,25 @@ export const setAuthToken = (token) => {
   }
 };
 
+// NEW: refresh token storage, same pattern as the access token above.
+// Login was only ever saving the access token — the refresh token from
+// the backend's response was being silently dropped, so there was nothing
+// to use once the access token expired or the page reloaded.
+export const getRefreshToken = () => localStorage.getItem('refresh_token');
+export const setRefreshToken = (token) => {
+  if (token) {
+    localStorage.setItem('refresh_token', token);
+  } else {
+    localStorage.removeItem('refresh_token');
+  }
+};
+
+// Clears both tokens. Used on logout and when refresh itself fails.
+export const clearAuthTokens = () => {
+  setAuthToken(null);
+  setRefreshToken(null);
+};
+
 // Add token to requests if it exists
 api.interceptors.request.use((config) => {
   const token = getAuthToken();
@@ -111,6 +130,7 @@ export const apiCalls = {
   login: (username, password) => api.post('/auth/login/', { username, password }),
   signup: (userData) => api.post('/auth/register/', userData),
   getMe: () => api.get('/auth/users/me/'),
+  logout: (refresh) => api.post('/auth/logout/', { refresh }),
 };
 
 export default api;
