@@ -22,13 +22,22 @@ export default function Dashboard({ products, sales }) {
         const res = await apiCalls.getDailySummary();
         console.log("Daily summary response:", res.data);
         setDailySummary(res.data);
-        // Extract count of sales if available
-        if (res.data && res.data.sales_count !== undefined) {
-          setTodaySalesCount(res.data.sales_count);
+
+        if (res.data) {
+          const transactionCount = res.data.transactions;
+          const salesCount = res.data.sales_count;
+
+          if (transactionCount !== undefined && transactionCount !== null) {
+            setTodaySalesCount(Number(transactionCount) || 0);
+          } else if (salesCount !== undefined && salesCount !== null) {
+            setTodaySalesCount(Number(salesCount) || 0);
+          } else {
+            setTodaySalesCount(0);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch daily summary:", err);
-        // Fall back to manual calculation
+        setTodaySalesCount(0);
       }
     };
     fetchDailySummary();
@@ -70,7 +79,23 @@ export default function Dashboard({ products, sales }) {
   };
   
   const todayTotal = calculateTodayTotal();
-  const todaySalesCountDisplay = todaySalesCount || (dailySummary?.transactions || dailySummary?.sales_count || 0);
+  const todaySalesCountDisplay = (() => {
+    if (todaySalesCount > 0) return todaySalesCount;
+
+    if (dailySummary?.transactions !== undefined && dailySummary?.transactions !== null) {
+      return Number(dailySummary.transactions) || 0;
+    }
+
+    if (dailySummary?.sales_count !== undefined && dailySummary?.sales_count !== null) {
+      return Number(dailySummary.sales_count) || 0;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    return (sales || []).filter((sale) => {
+      const saleDate = (sale.created_at || sale.date || '').split('T')[0];
+      return saleDate === today;
+    }).length;
+  })();
   
   const lowStock = lowStockLoaded ? lowStockProducts : (products || []).filter(isProductLowStock);
   const recent = (sales || []).slice(0, 5);
