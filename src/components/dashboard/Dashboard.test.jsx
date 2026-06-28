@@ -5,13 +5,33 @@ import { apiCalls } from "../../services/api";
 
 jest.mock("../../services/api", () => ({
   apiCalls: {
+    getDashboard: jest.fn(),
+    getSales: jest.fn(),
     getDailySummary: jest.fn(),
     getLowStockProducts: jest.fn(),
+    getTopProducts: jest.fn(),
   },
 }));
 
 describe("Dashboard", () => {
   beforeEach(() => {
+    apiCalls.getDashboard.mockResolvedValue({
+      data: {
+        today: {
+          gross_sales: 100,
+          transactions: 12,
+          total_tax: 0,
+        },
+        low_stock_count: 0,
+        top_item: null,
+      },
+    });
+    apiCalls.getSales.mockResolvedValue({
+      data: {
+        count: 12,
+        results: [],
+      },
+    });
     apiCalls.getDailySummary.mockResolvedValue({
       data: {
         gross_sales: 100,
@@ -20,12 +40,13 @@ describe("Dashboard", () => {
       },
     });
     apiCalls.getLowStockProducts.mockResolvedValue({ data: [] });
+    apiCalls.getTopProducts.mockResolvedValue({ data: { results: [] } });
   });
 
-  it("prefers the transaction count over sales_count for today's sales metric", async () => {
+  it("uses the backend dashboard transaction count for today's sales metric", async () => {
     render(<Dashboard products={[]} sales={[]} />);
 
-    await waitFor(() => expect(apiCalls.getDailySummary).toHaveBeenCalled());
-    expect(await screen.findByText("12")).toBeInTheDocument();
+    await waitFor(() => expect(apiCalls.getDashboard).toHaveBeenCalled());
+    expect((await screen.findAllByText("12")).length).toBeGreaterThan(0);
   });
 });

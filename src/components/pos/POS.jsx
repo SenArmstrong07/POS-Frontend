@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { getApiErrorMessage } from "../../utils/apiErrors";
 import { getProductId, getProductPrice } from "../../utils/productFields";
 import { apiCalls, getAuthToken, setAuthToken } from "../../services/api";
@@ -24,6 +24,8 @@ export default function POS({ products, onSale, onRefreshData }) {
   const [receiptVoidOpen, setReceiptVoidOpen] = useState(false);
   const [receiptVoidLoading, setReceiptVoidLoading] = useState(false);
   const [receiptVoidError, setReceiptVoidError] = useState("");
+  const [lastAddedProductId, setLastAddedProductId] = useState(null);
+  const addedAnimationTimer = useRef(null);
 
   const filtered = (products || []).filter(
     (p) =>
@@ -50,6 +52,72 @@ export default function POS({ products, onSale, onRefreshData }) {
       product: item.id,
       quantity: String(item.qty || 0),
     }));
+
+  const triggerAddedAnimation = (productId) => {
+    setLastAddedProductId(productId);
+    if (addedAnimationTimer.current) {
+      window.clearTimeout(addedAnimationTimer.current);
+    }
+    addedAnimationTimer.current = window.setTimeout(() => {
+      setLastAddedProductId(null);
+    }, 650);
+  };
+
+  const buildReceipt = ({
+    completedSale,
+    receiptPayload,
+    fallbackCart,
+    fallbackPayment,
+    fallbackTendered,
+    fallbackChange,
+  }) => {
+    const source = receiptPayload || completedSale || {};
+    const payments = source.payments || completedSale?.payments || [];
+    const primaryPayment = payments[0] || {};
+    const items = source.items || completedSale?.items || [];
+    const fallbackItems = (fallbackCart || []).map((item) => ({
+      id: item.saleItemId || item.id,
+      product: item.id,
+      product_sku: item.sku,
+      product_name: item.name,
+      quantity: item.qty,
+      unit_price: item.price,
+      line_total: item.lineTotal ?? item.price * item.qty,
+    }));
+    const normalizedTendered = Number(
+      primaryPayment.tendered ??
+        source.tendered ??
+        completedSale?.tendered ??
+        completedSale?.amount_tendered ??
+        fallbackTendered ??
+        source.total ??
+        0
+    );
+
+    return {
+      ...completedSale,
+      ...source,
+      id: source.receipt_no || completedSale?.receipt_no || completedSale?.id,
+      saleId: completedSale?.id || source.id,
+      receipt_no: source.receipt_no || completedSale?.receipt_no,
+      date: source.completed_at || source.date || completedSale?.completed_at || new Date().toISOString(),
+      payment: fallbackPayment,
+      payments,
+      items: items.length > 0 ? items : fallbackItems,
+      cart: fallbackCart,
+      subtotal: Number(source.subtotal ?? completedSale?.subtotal ?? source.total ?? 0),
+      discount_total: Number(source.discount_total ?? completedSale?.discount_total ?? 0),
+      tax_amount: Number(source.tax_amount ?? completedSale?.tax_amount ?? 0),
+      net_of_tax: Number(source.net_of_tax ?? completedSale?.net_of_tax ?? 0),
+      total: Number(source.total ?? completedSale?.total ?? 0),
+      tendered: Number.isFinite(normalizedTendered) ? normalizedTendered : Number(source.total ?? 0),
+      change: Number(source.change_due ?? completedSale?.change_due ?? fallbackChange ?? 0),
+      cashier: source.cashier || completedSale?.cashier,
+      status: source.status || completedSale?.status,
+      voided_at: source.voided_at || completedSale?.voided_at,
+      void_reason: source.void_reason || completedSale?.void_reason,
+    };
+  };
 
   const syncDraftCart = async (nextCart) => {
     setSyncing(true);
@@ -84,6 +152,7 @@ export default function POS({ products, onSale, onRefreshData }) {
       return;
     }
 
+    triggerAddedAnimation(productId);
     const existing = cart.find((i) => i.id === productId);
     const nextCart = existing
       ? cart.map((i) => (i.id === productId ? { ...i, qty: i.qty + 1 } : i))
@@ -185,21 +254,23 @@ export default function POS({ products, onSale, onRefreshData }) {
     setCheckoutLoading(true);
     setToast(null);
     try {
+      const checkoutCart = [...cart];
       const completedSale = await onSale(activeSale.id, payments);
-      const fallbackTendered = Number(
-        completedSale?.tendered ?? completedSale?.amount_tendered ?? tenderedAmount ?? subtotal
-      );
-      setReceipt({
-        ...completedSale,
-        id: completedSale.receipt_no || completedSale.id,
-        saleId: completedSale.id,
-        date: completedSale.completed_at || new Date().toLocaleString("en-PH"),
-        payment,
-        total: parseFloat(completedSale.total || subtotal),
-        tendered: Number.isFinite(fallbackTendered) ? fallbackTendered : subtotal,
-        change: payment === "Cash" ? Math.max(0, change) : 0,
-        cart,
-      });
+      let receiptPayload = null;
+      try {
+        const receiptResponse = await apiCalls.getReceipt(completedSale.id);
+        receiptPayload = receiptResponse.data;
+      } catch (receiptErr) {
+        console.error("Unable to load structured receipt:", getApiErrorMessage(receiptErr));
+      }
+      setReceipt(buildReceipt({
+        completedSale,
+        receiptPayload,
+        fallbackCart: checkoutCart,
+        fallbackPayment: payment,
+        fallbackTendered: tenderedAmount,
+        fallbackChange: payment === "Cash" ? Math.max(0, change) : 0,
+      }));
       setActiveSale(null);
       setCart([]);
       setTendered("");
@@ -231,11 +302,19 @@ export default function POS({ products, onSale, onRefreshData }) {
       if (adminRole && adminRole !== "ADMIN") throw new Error("The approving account must be an admin.");
 
       setAuthToken(adminToken);
-      await apiCalls.voidSale(receipt.saleId, { reason });
+      const voidResponse = await apiCalls.voidSale(receipt.saleId, { reason });
       setAuthToken(cashierToken);
       await onRefreshData?.();
       setReceiptVoidOpen(false);
-      setReceipt(null);
+      setReceipt((current) => ({
+        ...current,
+        ...voidResponse.data,
+        id: voidResponse.data.receipt_no || current?.id,
+        saleId: voidResponse.data.id || current?.saleId,
+        status: voidResponse.data.status || "VOID",
+        voided_at: voidResponse.data.voided_at,
+        void_reason: voidResponse.data.void_reason || reason,
+      }));
     } catch (err) {
       setAuthToken(cashierToken);
       setReceiptVoidError(getApiErrorMessage(err, "Unable to void sale."));
@@ -282,6 +361,8 @@ export default function POS({ products, onSale, onRefreshData }) {
         products={filtered}
         cart={cart}
         onAddToCart={addToCart}
+        lastAddedProductId={lastAddedProductId}
+        disabled={syncing || checkoutLoading}
       />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>

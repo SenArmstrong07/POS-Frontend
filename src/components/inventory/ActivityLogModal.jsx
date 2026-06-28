@@ -1,6 +1,6 @@
 import { COLORS } from "../../constants/colors";
 
-export default function ActivityLogModal({ show, onClose, logs, loading = false, onRefreshLogs }) {
+export default function ActivityLogModal({ show, onClose, logs = [], logCount = logs.length, loading = false, onRefreshLogs }) {
   if (!show) return null;
 
   return (
@@ -43,7 +43,7 @@ export default function ActivityLogModal({ show, onClose, logs, loading = false,
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: COLORS.text }}>Activity Log</h3>
-            {logs.length > 0 && (
+            {logCount > 0 && (
               <span
                 style={{
                   background: COLORS.primaryLight,
@@ -54,7 +54,7 @@ export default function ActivityLogModal({ show, onClose, logs, loading = false,
                   borderRadius: 6,
                 }}
               >
-                {logs.length}
+                {logCount}
               </span>
             )}
           </div>

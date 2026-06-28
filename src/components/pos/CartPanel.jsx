@@ -15,6 +15,13 @@ export default function CartPanel({ cart, subtotal, onUpdateQty, onRequestVoid, 
         minHeight: 400,
       }}
     >
+      <style>{`
+        @keyframes cartRowIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
+        .cart-row { transition: background .14s ease, transform .14s ease; animation: cartRowIn .22s ease both; }
+        .cart-row:hover { background: ${COLORS.faint}; transform: translateX(2px); }
+        .cart-qty-btn { transition: border-color .14s ease, color .14s ease, background .14s ease; }
+        .cart-qty-btn:hover:not(:disabled) { border-color: ${COLORS.primary}; color: ${COLORS.primaryDark}; background: ${COLORS.primaryLight}; }
+      `}</style>
       <h3 style={{ margin: "0 0 1rem", fontSize: 15, fontWeight: 600, color: COLORS.text }}>
         Current sale{" "}
         {cart.length > 0 && (
@@ -54,12 +61,14 @@ export default function CartPanel({ cart, subtotal, onUpdateQty, onRequestVoid, 
           {(cart || []).map((i) => (
             <div
               key={i.id}
+              className="cart-row"
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
-                padding: "10px 0",
+                padding: "10px 8px",
                 borderBottom: `1px solid ${COLORS.faint}`,
+                borderRadius: 10,
               }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -80,6 +89,7 @@ export default function CartPanel({ cart, subtotal, onUpdateQty, onRequestVoid, 
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button
+                  className="cart-qty-btn"
                   onClick={() => onUpdateQty(i.id, -1)}
                   disabled={disabled}
                   style={{
@@ -100,6 +110,7 @@ export default function CartPanel({ cart, subtotal, onUpdateQty, onRequestVoid, 
                 </button>
                 <span style={{ fontSize: 14, fontWeight: 600, minWidth: 20, textAlign: "center" }}>{i.qty}</span>
                 <button
+                  className="cart-qty-btn"
                   onClick={() => onUpdateQty(i.id, 1)}
                   disabled={disabled}
                   style={{
