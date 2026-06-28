@@ -163,7 +163,6 @@ export default function POS({ products, onSale, onRefreshData }) {
       setActiveSale(refreshed.data);
       setCart(saleToCart(refreshed.data));
       setVoidTarget(null);
-      setToast({ type: "success", message: "Item void approved." });
       await onRefreshData?.();
     } catch (err) {
       setAuthToken(cashierToken);
@@ -201,7 +200,7 @@ export default function POS({ products, onSale, onRefreshData }) {
       setCart([]);
       setTendered("");
     } catch (err) {
-      setToast({ type: "error", message: getApiErrorMessage(err, "Unable to complete sale.") });
+      console.error("Unable to complete sale:", getApiErrorMessage(err));
     } finally {
       setCheckoutLoading(false);
     }
@@ -232,7 +231,6 @@ export default function POS({ products, onSale, onRefreshData }) {
       setAuthToken(cashierToken);
       await onRefreshData?.();
       setReceiptVoidOpen(false);
-      setToast({ type: "success", message: "Sale voided successfully." });
       setReceipt(null);
     } catch (err) {
       setAuthToken(cashierToken);
