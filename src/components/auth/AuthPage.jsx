@@ -37,10 +37,12 @@ export default function AuthPage({ onLogin }) {
       localStorage.setItem("auth_token", token);
 
       const user = {
-        username,
-        name: username,
-        email: response.data.email || `${username}@posapp.local`,
-        id: response.data.user_id || response.data.id || response.data.user?.id,
+        ...(response.data.user || {}),
+        username: response.data.user?.username || username,
+        name: response.data.user?.first_name || response.data.user?.username || username,
+        email: response.data.user?.email || response.data.email || `${username}@posapp.local`,
+        id: response.data.user?.id || response.data.user_id || response.data.id,
+        role: response.data.user?.role,
       };
 
       pendingUserRef.current = user;

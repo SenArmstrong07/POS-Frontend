@@ -10,9 +10,10 @@ export default function CheckoutPanel({
   setTendered,
   change,
   onCheckout,
+  loading = false,
 }) {
   const canCharge =
-    cart.length > 0 && (payment !== "Cash" || (parseFloat(tendered) || 0) >= subtotal);
+    !loading && cart.length > 0 && (payment !== "Cash" || (parseFloat(tendered) || 0) >= subtotal);
 
   return (
     <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: "1rem" }}>
@@ -96,7 +97,7 @@ export default function CheckoutPanel({
           cursor: canCharge ? "pointer" : "not-allowed",
         }}
       >
-        Charge {cart.length > 0 ? fmt(subtotal) : ""}
+        {loading ? "Charging..." : `Charge ${cart.length > 0 ? fmt(subtotal) : ""}`}
       </button>
     </div>
   );
