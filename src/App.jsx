@@ -5,6 +5,7 @@ import Dashboard from "./components/dashboard/Dashboard";
 import POS from "./components/pos/POS";
 import Inventory from "./components/inventory/Inventory";
 import SalesHistory from "./components/sales/SalesHistory";
+import ActivityHistory from "./components/activity/ActivityHistory";
 import Analytics from "./components/analytics/Analytics";
 import ToastProvider from "./components/ui/ToastProvider";
 import { DEMO_PRODUCTS, DEMO_SALES } from "./constants/demoData";
@@ -149,6 +150,7 @@ export default function App() {
             {tab === "pos" && <POS products={products} onSale={handleSale} onRefreshData={refreshData} />}
             {tab === "inventory" && <Inventory products={products} onRefreshData={refreshData} />}
             {tab === "sales" && <SalesHistory sales={sales} onRefreshData={refreshData} />}
+            {tab === "activity" && <ActivityHistory />}
             {tab === "reports" && <Analytics />}
           </>
         )}

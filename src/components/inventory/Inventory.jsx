@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiCalls } from "../../services/api";
 import { getApiErrorMessage } from "../../utils/apiErrors";
 import InventoryToolbar from "./InventoryToolbar";
@@ -12,10 +12,12 @@ export default function Inventory({ products, onRefreshData }) {
   const [search, setSearch] = useState("");
   const [form, setForm] = useState({ name: "", sku: "", price: "", cost: "", stock: "", reorder: "", category: "" });
   const [stockLogs, setStockLogs] = useState([]);
+  const [stockLogCount, setStockLogCount] = useState(0);
   const [showLog, setShowLog] = useState(false);
   const [adjustModal, setAdjustModal] = useState(null);
   const [loadingAction, setLoadingAction] = useState(false);
   const [logLoading, setLogLoading] = useState(false);
+  const logRequestId = useRef(0);
 
   const filtered = (products || []).filter(
     (p) => p && (
@@ -24,17 +26,68 @@ export default function Inventory({ products, onRefreshData }) {
     )
   );
 
-  const normalizeList = (data) => Array.isArray(data) ? data : (data?.results || []);
+  const normalizeLogPage = (data) => {
+    if (Array.isArray(data)) {
+      return {
+        records: data,
+        total: data.length,
+        hasPagination: false,
+      };
+    }
+
+    const records = Array.isArray(data?.results) ? data.results : [];
+    return {
+      records,
+      total: Number.isFinite(Number(data?.count)) ? Number(data.count) : records.length,
+      hasPagination: Boolean(data && "results" in data),
+    };
+  };
 
   const loadStockLogs = useCallback(async () => {
+    const requestId = logRequestId.current + 1;
+    logRequestId.current = requestId;
     setLogLoading(true);
     try {
-      const response = await apiCalls.getStockMovements({ ordering: "-created_at" });
-      setStockLogs(normalizeList(response.data));
+      const pageSize = 200;
+      const firstResponse = await apiCalls.getStockMovements({
+        ordering: "-created_at",
+        page_size: pageSize,
+        page: 1,
+      });
+      const firstPage = normalizeLogPage(firstResponse.data);
+      let allRecords = firstPage.records;
+      let total = firstPage.total;
+
+      if (firstPage.hasPagination && total > allRecords.length) {
+        const pageCount = Math.ceil(total / pageSize);
+        const remainingPages = Array.from({ length: pageCount - 1 }, (_, index) => index + 2);
+        const pageResponses = await Promise.all(
+          remainingPages.map((page) =>
+            apiCalls.getStockMovements({
+              ordering: "-created_at",
+              page_size: pageSize,
+              page,
+            })
+          )
+        );
+
+        pageResponses.forEach((response) => {
+          const page = normalizeLogPage(response.data);
+          allRecords = allRecords.concat(page.records);
+          total = Math.max(total, page.total);
+        });
+      }
+
+      if (requestId === logRequestId.current) {
+        setStockLogs(allRecords);
+        setStockLogCount(total);
+      }
     } catch (err) {
       console.error("Unable to load inventory activity log:", getApiErrorMessage(err));
     } finally {
-      setLogLoading(false);
+      if (requestId === logRequestId.current) {
+        setLogLoading(false);
+      }
     }
   }, []);
 
@@ -168,9 +221,12 @@ export default function Inventory({ products, onRefreshData }) {
         search={search}
         setSearch={setSearch}
         onAddClick={() => setShowAdd(true)}
-        onLogClick={() => setShowLog(true)}
+        onLogClick={() => {
+          setShowLog(true);
+          loadStockLogs();
+        }}
         onCSVImport={handleCSV}
-        logCount={stockLogs.length}
+        logCount={stockLogCount}
       />
 
       <AddProductModal
@@ -186,6 +242,7 @@ export default function Inventory({ products, onRefreshData }) {
         show={showLog}
         onClose={() => setShowLog(false)}
         logs={stockLogs}
+        logCount={stockLogCount}
         loading={logLoading}
         onRefreshLogs={loadStockLogs}
       />
