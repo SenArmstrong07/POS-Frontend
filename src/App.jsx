@@ -6,6 +6,7 @@ import POS from "./components/pos/POS";
 import Inventory from "./components/inventory/Inventory";
 import SalesHistory from "./components/sales/SalesHistory";
 import Analytics from "./components/analytics/Analytics";
+import Users from "./components/users/Users";
 import ToastProvider from "./components/ui/ToastProvider";
 import { DEMO_PRODUCTS, DEMO_SALES } from "./constants/demoData";
 import { apiCalls, getAuthToken, clearAuthTokens } from "./services/api";
@@ -149,7 +150,8 @@ export default function App() {
             {tab === "pos" && <POS products={products} onSale={handleSale} onRefreshData={refreshData} />}
             {tab === "inventory" && <Inventory products={products} onRefreshData={refreshData} />}
             {tab === "sales" && <SalesHistory sales={sales} onRefreshData={refreshData} />}
-            {tab === "reports" && <Analytics />}
+            {tab === "reports" && user?.role === "ADMIN" && <Analytics />}
+            {tab === "users" && user?.role === "ADMIN" && <Users currentUser={user} />}
           </>
         )}
       </AppLayout>
