@@ -19,6 +19,25 @@ export const setAuthToken = (token) => {
   }
 };
 
+// NEW: refresh token storage, same pattern as the access token above.
+// Login was only ever saving the access token — the refresh token from
+// the backend's response was being silently dropped, so there was nothing
+// to use once the access token expired or the page reloaded.
+export const getRefreshToken = () => localStorage.getItem('refresh_token');
+export const setRefreshToken = (token) => {
+  if (token) {
+    localStorage.setItem('refresh_token', token);
+  } else {
+    localStorage.removeItem('refresh_token');
+  }
+};
+
+// Clears both tokens. Used on logout and when refresh itself fails.
+export const clearAuthTokens = () => {
+  setAuthToken(null);
+  setRefreshToken(null);
+};
+
 // Add token to requests if it exists
 api.interceptors.request.use((config) => {
   const token = getAuthToken();
@@ -29,6 +48,61 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// NEW: on a 401, try to refresh the access token once and retry the
+// original request. If refresh also fails (refresh token missing/expired),
+// clear storage so the app falls back to the login screen instead of
+// looping on 401s.
+let refreshPromise = null;
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const { response, config } = error;
+
+    if (!response || response.status !== 401 || config._retried) {
+      return Promise.reject(error);
+    }
+
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      clearAuthTokens();
+      return Promise.reject(error);
+    }
+
+    config._retried = true;
+
+    try {
+      // Multiple requests can 401 at once — share one in-flight refresh
+      // call instead of firing a refresh request per failed request.
+      if (!refreshPromise) {
+        refreshPromise = axios
+          .post(`${API_BASE_URL}/auth/refresh/`, { refresh: refreshToken })
+          .finally(() => {
+            refreshPromise = null;
+          });
+      }
+      const refreshRes = await refreshPromise;
+      const newAccess = refreshRes.data.access;
+      setAuthToken(newAccess);
+
+      // SIMPLE_JWT has ROTATE_REFRESH_TOKENS + BLACKLIST_AFTER_ROTATION on
+      // the backend: every successful refresh blacklists the refresh token
+      // that was just used and issues a brand new one. If we don't save
+      // this, the NEXT refresh attempt uses a dead token and logs the user
+      // out — even though this refresh just succeeded.
+      if (refreshRes.data.refresh) {
+        setRefreshToken(refreshRes.data.refresh);
+      }
+
+      config.headers.Authorization = `Bearer ${newAccess}`;
+      return api(config);
+    } catch (refreshError) {
+      clearAuthTokens();
+      return Promise.reject(refreshError);
+    }
+  }
+);
 
 // API Endpoints
 export const apiCalls = {
@@ -71,6 +145,7 @@ export const apiCalls = {
   login: (username, password) => api.post('/auth/login/', { username, password }),
   signup: (userData) => api.post('/auth/register/', userData),
   getMe: () => api.get('/auth/users/me/'),
+  logout: (refresh) => api.post('/auth/logout/', { refresh }),
 };
 
 export default api;

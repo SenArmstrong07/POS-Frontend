@@ -7,16 +7,52 @@ import Inventory from "./components/inventory/Inventory";
 import SalesHistory from "./components/sales/SalesHistory";
 import Analytics from "./components/analytics/Analytics";
 import { DEMO_PRODUCTS, DEMO_SALES } from "./constants/demoData";
-import { apiCalls } from "./services/api";
+import { apiCalls, getAuthToken, clearAuthTokens } from "./services/api";
 import { getApiErrorMessage } from "./utils/apiErrors";
 
 export default function App() {
   const [user, setUser] = useState(null);
+  // NEW: true while we check localStorage for an existing session on boot.
+  // Without this, the app would render <AuthPage /> for one frame on every
+  // refresh (since `user` starts null) even when a valid token exists.
+  const [checkingSession, setCheckingSession] = useState(true);
   const [tab, setTab] = useState("dashboard");
   const [products, setProducts] = useState([]);
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // NEW: on first mount, if a token is already in localStorage (e.g. from
+  // before a page refresh), validate it against the backend and restore
+  // the user session instead of falling back to the login screen.
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) {
+      setCheckingSession(false);
+      return;
+    }
+    apiCalls
+      .getMe()
+      .then((res) => {
+        const me = res.data || {};
+        setUser({
+          ...me,
+          username: me.username,
+          name: me.first_name || me.username,
+          email: me.email,
+          id: me.id,
+          role: me.role,
+        });
+      })
+      .catch(() => {
+        // Token invalid/expired and refresh (handled in the api.js
+        // interceptor) also failed — clear it so we don't keep retrying.
+        clearAuthTokens();
+      })
+      .finally(() => {
+        setCheckingSession(false);
+      });
+  }, []);
 
   // Fetch data from Django backend
   useEffect(() => {
@@ -76,13 +112,24 @@ export default function App() {
 
   const handleLogin = (userData) => {
     setUser(userData);
-    // Token should be stored in localStorage by your auth logic
+    // Tokens are stored in localStorage by AuthPage's handleLoginSubmit.
   };
+
+  const handleLogout = () => {
+    clearAuthTokens();
+    setUser(null);
+  };
+
+  // While checking localStorage for an existing session, render nothing
+  // (or a tiny loading state) instead of flashing the login screen.
+  if (checkingSession) {
+    return null;
+  }
 
   if (!user) return <AuthPage onLogin={handleLogin} />;
 
   return (
-    <AppLayout user={user} onLogout={() => setUser(null)} activeTab={tab} setActiveTab={setTab}>
+    <AppLayout user={user} onLogout={handleLogout} activeTab={tab} setActiveTab={setTab}>
       {loading && <div>Loading...</div>}
       {error && <div style={{ color: 'red' }}>{error}</div>}
       {!loading && (
