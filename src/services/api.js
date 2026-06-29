@@ -11,7 +11,6 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
-
 export const getAuthToken = () => localStorage.getItem('auth_token');
 export const setAuthToken = (token) => {
   if (token) {
@@ -102,6 +101,7 @@ export const apiCalls = {
   getStockMovements: (params) => api.get('/inventory/movements/', { params }),
   adjustStock: (payload) => api.post('/inventory/movements/adjust/', payload),
   getLowStockProducts: () => api.get('/inventory/movements/low_stock/'),
+  getCategories: () => api.get('/catalog/categories/'),
 
   // Sales - POS
   getSales: (params) => api.get('/sales/sales/', { params }),
