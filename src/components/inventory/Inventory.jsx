@@ -10,7 +10,15 @@ import ProductTable from "./ProductTable";
 export default function Inventory({ products, onRefreshData }) {
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState("");
-  const [form, setForm] = useState({ name: "", sku: "", price: "", cost: "", stock: "", reorder: "", category: "" });
+  const [categories, setCategories] = useState([]);
+  const [form, setForm] = useState({
+    name: "",
+    category: "",
+    price: "",
+    cost: "",
+    stock: "",
+    reorder: "",
+  });
   const [stockLogs, setStockLogs] = useState([]);
   const [stockLogCount, setStockLogCount] = useState(0);
   const [showLog, setShowLog] = useState(false);
@@ -95,13 +103,25 @@ export default function Inventory({ products, onRefreshData }) {
     loadStockLogs();
   }, [loadStockLogs]);
 
+useEffect(() => {
+  apiCalls.getCategories().then((res) => {
+    const categories = res.data.results ?? res.data;
+
+    setCategories(
+      categories.map((category) => ({
+        value: category.id,
+        label: category.name,
+      }))
+    );
+  });
+}, []);
+  
   const addProduct = async (e) => {
     e.preventDefault();
     setLoadingAction(true);
     try {
       const payload = {
         name: form.name.trim(),
-        sku: form.sku.trim(),
         barcode: "",
         category: form.category && !Number.isNaN(Number(form.category)) ? Number(form.category) : null,
         unit: "pc",
@@ -229,14 +249,15 @@ export default function Inventory({ products, onRefreshData }) {
         logCount={stockLogCount}
       />
 
-      <AddProductModal
-        show={showAdd}
-        onClose={() => setShowAdd(false)}
-        form={form}
-        setForm={setForm}
-        onSubmit={addProduct}
-        loading={loadingAction}
-      />
+    <AddProductModal
+      show={showAdd}
+      onClose={() => setShowAdd(false)}
+      form={form}
+      setForm={setForm}
+      categories={categories}
+      onSubmit={addProduct}
+      loading={loadingAction}
+    />
 
       <ActivityLogModal
         show={showLog}

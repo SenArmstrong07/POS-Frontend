@@ -1,8 +1,8 @@
 import { COLORS } from "../../constants/colors";
+import Select from "react-select";
 
 const FIELDS = [
   ["Product name", "name", "text"],
-  ["SKU", "sku", "text"],
   ["Category", "category", "text"],
   ["Price (₱)", "price", "number"],
   ["Cost (₱)", "cost", "number"],
@@ -10,12 +10,20 @@ const FIELDS = [
   ["Reorder level", "reorder", "number"],
 ];
 
-export default function AddProductModal({ show, onClose, form, setForm, onSubmit, loading = false }) {
+  export default function AddProductModal({
+    show,
+    onClose,
+    form,
+    setForm,
+    onSubmit,
+    categories,
+    loading = false,
+  }) {
   if (!show) return null;
 
   const handleCancel = () => {
     onClose();
-    setForm({ name: "", sku: "", price: "", cost: "", stock: "", reorder: "", category: "" });
+    setForm({ name: "", category: "", price: "", cost: "", stock: "", reorder: "" });
   };
 
   return (
@@ -99,36 +107,73 @@ export default function AddProductModal({ show, onClose, form, setForm, onSubmit
         {/* Body */}
         <form
           onSubmit={onSubmit}
-          style={{ flex: 1, overflowY: "auto", padding: "1.25rem 1.5rem" }}
+          style={{padding: "1.25rem 1.5rem" }}
         >
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            {FIELDS.map(([label, key, type], idx) => (
-              <div key={key} style={{ gridColumn: idx < 1 ? "1 / -1" : "auto" }}>
-                <label
-                  style={{
-                    fontSize: 12,
-                    color: COLORS.muted,
-                    fontWeight: 500,
-                    display: "block",
-                    marginBottom: 6,
-                  }}
-                >
-                  {label}
-                </label>
+          {FIELDS.map(([label, key, type], idx) => (
+            <div key={key} style={{ gridColumn: idx < 1 ? "1 / -1" : "auto" }}>
+              <label
+                style={{
+                  fontSize: 12,
+                  color: COLORS.muted,
+                  fontWeight: 500,
+                  display: "block",
+                  marginBottom: 6,
+                }}
+              >
+                {label}
+              </label>
+
+              {key === "category" ? (
+                <Select
+                  options={categories}
+                  isSearchable
+                  isClearable
+                  isDisabled={loading}
+                  placeholder="e.g. Snacks"
+                  value={categories.find((c) => c.value === form.category) || null}
+                  onChange={(option) =>
+                    setForm((f) => ({
+                      ...f,
+                      category: option ? option.value : "",
+                    }))
+                  }
+                />
+              ) : (
                 <input
-                  required={["name", "sku", "price", "cost", "stock", "reorder"].includes(key)}
+                  required={["name", "price", "cost", "stock", "reorder"].includes(key)}
                   type={type}
                   disabled={loading}
                   value={form[key]}
                   onChange={(e) => {
                     let value = e.target.value;
+
                     // Ensure numeric fields only accept positive numbers
-                    if (["price", "cost", "stock", "reorder"].includes(key) && value && isNaN(parseFloat(value))) {
+                    if (
+                      ["price", "cost", "stock", "reorder"].includes(key) &&
+                      value &&
+                      isNaN(parseFloat(value))
+                    ) {
                       return;
                     }
+
                     setForm((f) => ({ ...f, [key]: value }));
                   }}
-                  placeholder={key === "name" ? "e.g. Ezek the dog" : key === "sku" ? "e.g. WM-001" : ""}
+                  placeholder={
+                    key === "name"
+                      ? "e.g. Ezek the dog"
+                      : key === "category"
+                      ? "e.g. Snacks"
+                      : key === "price"
+                      ? "e.g. 25.00"
+                      : key === "cost"
+                      ? "e.g. 18.50"
+                      : key === "stock"
+                      ? "e.g. 100"
+                      : key === "reorder"
+                      ? "e.g. 10"
+                      : undefined
+                  }
                   min={["price", "cost", "stock", "reorder"].includes(key) ? "0" : undefined}
                   step={["price", "cost"].includes(key) ? "0.01" : "1"}
                   style={{
@@ -141,8 +186,9 @@ export default function AddProductModal({ show, onClose, form, setForm, onSubmit
                     outline: "none",
                   }}
                 />
-              </div>
-            ))}
+              )}
+            </div>
+          ))}
           </div>
 
           <div
