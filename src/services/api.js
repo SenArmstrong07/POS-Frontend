@@ -11,7 +11,6 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
-
 export const getAuthToken = () => localStorage.getItem('auth_token');
 export const setAuthToken = (token) => {
   if (token) {
@@ -190,9 +189,10 @@ export const apiCalls = {
   getStockMovements: (params) => api.get('/inventory/movements/', { params }),
   adjustStock: (payload) => api.post('/inventory/movements/adjust/', payload),
   getLowStockProducts: () => api.get('/inventory/movements/low_stock/'),
+  getCategories: () => api.get('/catalog/categories/'),
 
   // Sales - POS
-  getSales: () => api.get('/sales/sales/'),
+  getSales: (params) => api.get('/sales/sales/', { params }),
   getSaleDetail: (id) => api.get(`/sales/sales/${id}/`),
   createSale: (saleData) => api.post('/sales/sales/', saleData),
   setSaleItems: (id, cartItems) => api.post(`/sales/sales/${id}/set_items/`, cartItems),
@@ -218,6 +218,7 @@ export const apiCalls = {
   login: (username, password) => api.post('/auth/login/', { username, password }),
   signup: (userData) => api.post('/auth/register/', userData),
   getMe: () => api.get('/auth/users/me/'),
+  getActivityLogs: (params) => api.get('/auth/activity/', { params, toast: false }),
   logout: (refresh) => api.post('/auth/logout/', { refresh }),
 
   // User Management (Admin only)

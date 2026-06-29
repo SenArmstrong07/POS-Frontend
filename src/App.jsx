@@ -5,6 +5,7 @@ import Dashboard from "./components/dashboard/Dashboard";
 import POS from "./components/pos/POS";
 import Inventory from "./components/inventory/Inventory";
 import SalesHistory from "./components/sales/SalesHistory";
+import ActivityHistory from "./components/activity/ActivityHistory";
 import Analytics from "./components/analytics/Analytics";
 import Users from "./components/users/Users";
 import ToastProvider from "./components/ui/ToastProvider";
@@ -152,6 +153,8 @@ export default function App() {
             {tab === "sales" && <SalesHistory sales={sales} onRefreshData={refreshData} />}
             {tab === "reports" && user?.role === "ADMIN" && <Analytics />}
             {tab === "users" && user?.role === "ADMIN" && <Users currentUser={user} />}
+            {tab === "activity" && <ActivityHistory />}
+            {tab === "reports" && <Analytics />}
           </>
         )}
       </AppLayout>
