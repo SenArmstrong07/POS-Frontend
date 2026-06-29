@@ -1,20 +1,30 @@
 import { useState } from "react";
 import { COLORS } from "../../constants/colors";
-import { GridIcon, CartIcon, BoxIcon, ReceiptIcon, ReportIcon, HistoryIcon } from "../icons/Icons";
+import { GridIcon, CartIcon, BoxIcon, ReceiptIcon, ReportIcon, UsersIcon } from "../icons/Icons";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 
 export default function Layout({ user, onLogout, children, activeTab, setActiveTab }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const navItems = [
-    { id: "dashboard", label: "Dashboard", icon: <GridIcon /> },
-    { id: "pos", label: "Point of Sale", icon: <CartIcon /> },
-    { id: "inventory", label: "Inventory", icon: <BoxIcon /> },
-    { id: "sales", label: "Sales History", icon: <ReceiptIcon /> },
-    { id: "activity", label: "Activity History", icon: <HistoryIcon /> },
-    { id: "reports", label: "Reports", icon: <ReportIcon />},
+  const isAdmin = user?.role === "ADMIN";
+
+  const allNavItems = [
+    { id: "dashboard", label: "Dashboard", icon: <GridIcon />, adminOnly: false },
+    { id: "pos", label: "Point of Sale", icon: <CartIcon />, adminOnly: false },
+    { id: "inventory", label: "Inventory", icon: <BoxIcon />, adminOnly: false },
+    { id: "sales", label: "Sales History", icon: <ReceiptIcon />, adminOnly: false },
+    // Admin only — every Reports endpoint (DashboardReport, SalesSummaryReport,
+    // TopProductsReport, InventoryStatusReport, StockInHistoryReport,
+    // ProfitEstimateReport, InventoryTurnoverReport, ReorderPointReport) uses
+    // permission_classes = [IsAdmin] on the backend. A Cashier could see this
+    // tab before but got a 403 the moment they opened it.
+    { id: "reports", label: "Reports", icon: <ReportIcon />, adminOnly: true },
+    // Admin only — UserViewSet/ActivityLogViewSet both require IsAdmin too.
+    { id: "users", label: "User Management", icon: <UsersIcon />, adminOnly: true },
   ];
+
+  const navItems = allNavItems.filter((item) => !item.adminOnly || isAdmin);
 
   const handleNavigate = (id) => {
     setActiveTab(id);
