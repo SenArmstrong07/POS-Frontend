@@ -1,8 +1,28 @@
 import { useEffect, useState } from "react";
+import { apiCalls } from "../../services/api";
+import { getApiErrorMessage } from "../../utils/apiErrors";
 import { COLORS } from "../../constants/colors";
 
-export default function EditUserModal({ show, user, onClose, onSubmit, loading = false, error = null }) {
+export default function EditUserModal({
+  show,
+  user,
+  currentUser,
+  onClose,
+  onSubmit,
+  onVerifyAdminPassword,
+  loading = false,
+  error = null,
+}) {
   const [form, setForm] = useState(null);
+  const [passwordChangeEnabled, setPasswordChangeEnabled] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    newPassword: "",
+    confirmPassword: "",
+    adminPassword: "",
+  });
+  const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmingPassword, setConfirmingPassword] = useState(false);
 
   // Reset local form state whenever a different user is opened for editing.
   useEffect(() => {
@@ -14,6 +34,10 @@ export default function EditUserModal({ show, user, onClose, onSubmit, loading =
         role: user.role || "CASHIER",
         is_active: !!user.is_active,
       });
+      setPasswordChangeEnabled(false);
+      setPasswordForm({ newPassword: "", confirmPassword: "", adminPassword: "" });
+      setShowPasswordConfirmation(false);
+      setPasswordError("");
     } else {
       setForm(null);
     }
@@ -23,7 +47,58 @@ export default function EditUserModal({ show, user, onClose, onSubmit, loading =
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(user.id, form);
+    setPasswordError("");
+
+    if (!passwordChangeEnabled) {
+      onSubmit(user.id, form);
+      return;
+    }
+
+    if (!passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setPasswordError("Please enter and confirm the new password.");
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("New passwords do not match.");
+      return;
+    }
+
+    setShowPasswordConfirmation(true);
+  };
+
+  const handlePasswordConfirm = async (e) => {
+    e.preventDefault();
+    setPasswordError("");
+
+    if (!passwordForm.adminPassword.trim()) {
+      setPasswordError("Please enter the admin password.");
+      return;
+    }
+
+    setConfirmingPassword(true);
+    try {
+      const verifyPassword = onVerifyAdminPassword || (async (adminPassword) => {
+        if (!currentUser?.username) {
+          throw new Error("No admin account is available for verification.");
+        }
+        await apiCalls.login(currentUser.username, adminPassword);
+      });
+
+      await verifyPassword(passwordForm.adminPassword);
+      await onSubmit(user.id, {
+        ...form,
+        password: passwordForm.newPassword,
+        adminPassword: passwordForm.adminPassword,
+      });
+      setPasswordForm({ newPassword: "", confirmPassword: "", adminPassword: "" });
+      setPasswordChangeEnabled(false);
+      setShowPasswordConfirmation(false);
+    } catch (err) {
+      setPasswordError(getApiErrorMessage(err, "Admin password verification failed."));
+    } finally {
+      setConfirmingPassword(false);
+    }
   };
 
   return (
@@ -191,12 +266,164 @@ export default function EditUserModal({ show, user, onClose, onSubmit, loading =
                 Active account
               </label>
             </div>
-          </div>
 
-          <p style={{ fontSize: 12, color: COLORS.muted, margin: "12px 0 0" }}>
-            Password changes aren't available here — the account holder can change their own
-            password from their profile.
-          </p>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 14,
+                  color: COLORS.text,
+                  cursor: loading ? "not-allowed" : "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  disabled={loading}
+                  checked={passwordChangeEnabled}
+                  onChange={(e) => {
+                    setPasswordChangeEnabled(e.target.checked);
+                    setPasswordError("");
+                    setShowPasswordConfirmation(false);
+                    setPasswordForm((prev) => ({ ...prev, adminPassword: "" }));
+                  }}
+                />
+                Change password for this user
+              </label>
+
+              {passwordChangeEnabled && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: 12,
+                    borderRadius: 10,
+                    border: "1px solid " + COLORS.border,
+                    background: COLORS.faint,
+                  }}
+                >
+                  <div style={{ display: "grid", gap: 10 }}>
+                    <div>
+                      <label htmlFor="new-password" style={labelStyle}>
+                        New password
+                      </label>
+                      <input
+                        id="new-password"
+                        type="password"
+                        disabled={loading || confirmingPassword}
+                        value={passwordForm.newPassword}
+                        onChange={(e) =>
+                          setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))
+                        }
+                        style={inputStyle}
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="confirm-password" style={labelStyle}>
+                        Confirm new password
+                      </label>
+                      <input
+                        id="confirm-password"
+                        type="password"
+                        disabled={loading || confirmingPassword}
+                        value={passwordForm.confirmPassword}
+                        onChange={(e) =>
+                          setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                        }
+                        style={inputStyle}
+                      />
+                    </div>
+                  </div>
+
+                  {showPasswordConfirmation && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: 12,
+                        borderRadius: 10,
+                        border: "1px solid " + COLORS.border,
+                        background: "#fff",
+                      }}
+                    >
+                      <p style={{ margin: "0 0 10px", fontSize: 13, color: COLORS.text }}>
+                        For security, enter the admin password before applying the reset.
+                      </p>
+                      <label htmlFor="admin-password" style={labelStyle}>
+                        Admin password
+                      </label>
+                      <input
+                        id="admin-password"
+                        type="password"
+                        disabled={loading || confirmingPassword}
+                        value={passwordForm.adminPassword}
+                        onChange={(e) =>
+                          setPasswordForm((prev) => ({ ...prev, adminPassword: e.target.value }))
+                        }
+                        style={inputStyle}
+                      />
+
+                      {passwordError && (
+                        <div
+                          style={{
+                            marginTop: 10,
+                            background: "#fef2f2",
+                            color: COLORS.danger,
+                            border: `1px solid ${COLORS.danger}33`,
+                            borderRadius: 8,
+                            padding: "8px 10px",
+                            fontSize: 12,
+                          }}
+                        >
+                          {passwordError}
+                        </div>
+                      )}
+
+                      <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                        <button
+                          type="button"
+                          disabled={loading || confirmingPassword}
+                          onClick={handlePasswordConfirm}
+                          style={{
+                            flex: 1,
+                            padding: "10px 12px",
+                            background: loading || confirmingPassword ? COLORS.border : COLORS.primary,
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 8,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            cursor: loading || confirmingPassword ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {confirmingPassword ? "Verifying..." : "Confirm password change"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={loading || confirmingPassword}
+                          onClick={() => {
+                            setShowPasswordConfirmation(false);
+                            setPasswordError("");
+                          }}
+                          style={{
+                            padding: "10px 12px",
+                            background: COLORS.faint,
+                            color: COLORS.muted,
+                            border: "none",
+                            borderRadius: 8,
+                            fontSize: 13,
+                            cursor: loading || confirmingPassword ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
 
           <div
             style={{
@@ -209,25 +436,25 @@ export default function EditUserModal({ show, user, onClose, onSubmit, loading =
           >
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || confirmingPassword}
               style={{
                 flex: 1,
                 padding: "11px 20px",
-                background: loading ? COLORS.border : COLORS.primary,
+                background: loading || confirmingPassword ? COLORS.border : COLORS.primary,
                 color: "#fff",
                 border: "none",
                 borderRadius: 8,
                 fontSize: 14,
                 fontWeight: 600,
-                cursor: loading ? "not-allowed" : "pointer",
+                cursor: loading || confirmingPassword ? "not-allowed" : "pointer",
               }}
             >
-              {loading ? "Saving..." : "Save changes"}
+              {loading ? "Saving..." : passwordChangeEnabled ? "Save changes" : "Save changes"}
             </button>
             <button
               type="button"
               onClick={() => !loading && onClose()}
-              disabled={loading}
+              disabled={loading || confirmingPassword}
               style={{
                 padding: "11px 20px",
                 background: COLORS.faint,
@@ -235,7 +462,7 @@ export default function EditUserModal({ show, user, onClose, onSubmit, loading =
                 border: "none",
                 borderRadius: 8,
                 fontSize: 14,
-                cursor: loading ? "not-allowed" : "pointer",
+                cursor: loading || confirmingPassword ? "not-allowed" : "pointer",
               }}
             >
               Cancel
