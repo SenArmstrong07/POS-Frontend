@@ -24,6 +24,8 @@ export default function EditUserModal({
   const [passwordError, setPasswordError] = useState("");
   const [confirmingPassword, setConfirmingPassword] = useState(false);
 
+  const isSelfEdit = user?.id === currentUser?.id;
+
   // Reset local form state whenever a different user is opened for editing.
   useEffect(() => {
     if (user) {
@@ -72,7 +74,7 @@ export default function EditUserModal({
     setPasswordError("");
 
     if (!passwordForm.adminPassword.trim()) {
-      setPasswordError("Please enter the admin password.");
+      setPasswordError(isSelfEdit ? "Please enter your current password." : "Please enter the admin password.");
       return;
     }
 
@@ -95,7 +97,7 @@ export default function EditUserModal({
       setPasswordChangeEnabled(false);
       setShowPasswordConfirmation(false);
     } catch (err) {
-      setPasswordError(getApiErrorMessage(err, "Admin password verification failed."));
+      setPasswordError(getApiErrorMessage(err, isSelfEdit ? "Current password verification failed." : "Admin password verification failed."));
     } finally {
       setConfirmingPassword(false);
     }
@@ -289,7 +291,7 @@ export default function EditUserModal({
                     setPasswordForm((prev) => ({ ...prev, adminPassword: "" }));
                   }}
                 />
-                Change password for this user
+                {isSelfEdit ? "Change my password" : "Change password for this user"}
               </label>
 
               {passwordChangeEnabled && (
@@ -347,10 +349,12 @@ export default function EditUserModal({
                       }}
                     >
                       <p style={{ margin: "0 0 10px", fontSize: 13, color: COLORS.text }}>
-                        For security, enter the admin password before applying the reset.
+                        {isSelfEdit
+                          ? "For security, enter your current password before applying the change."
+                          : "For security, enter the admin password before applying the reset."}
                       </p>
                       <label htmlFor="admin-password" style={labelStyle}>
-                        Admin password
+                        {isSelfEdit ? "Current password" : "Admin password"}
                       </label>
                       <input
                         id="admin-password"
