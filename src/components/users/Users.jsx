@@ -91,11 +91,29 @@ export default function Users({ currentUser }) {
     }
   };
 
+  const verifyAdminPassword = async (adminPassword) => {
+    if (!currentUser?.username) {
+      throw new Error("No admin account is available for verification.");
+    }
+    await apiCalls.login(currentUser.username, adminPassword);
+  };
+
   const saveUserEdit = async (userId, updates) => {
+    const { password, adminPassword, ...userUpdates } = updates || {};
+    const payload = { ...userUpdates };
+
+    if (password) {
+      payload.password = password;
+    }
+
     setEditError(null);
     setLoadingAction(true);
     try {
-      await apiCalls.updateUser(userId, updates);
+      if (password) {
+        await apiCalls.updateUser(userId, payload);
+      } else {
+        await apiCalls.updateUser(userId, payload);
+      }
       await loadUsers();
       await loadActivityLog();
       setEditingUser(null);
@@ -163,8 +181,10 @@ export default function Users({ currentUser }) {
       <EditUserModal
         show={!!editingUser}
         user={editingUser}
+        currentUser={currentUser}
         onClose={() => setEditingUser(null)}
         onSubmit={saveUserEdit}
+        onVerifyAdminPassword={verifyAdminPassword}
         loading={loadingAction}
         error={editError}
       />
